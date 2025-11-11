@@ -25,7 +25,7 @@ class _NotificationsCenterState extends State<NotificationsCenter> {
     {
       'id': 2,
       'title': 'Price Drop Alert',
-      'message': 'Mercedes C-Class price dropped to \$52,000',
+      'message': 'Mercedes C-Class price dropped to Rs 1,45,00,000',
       'type': 'alert',
       'time': '1 hour ago',
       'isRead': false,

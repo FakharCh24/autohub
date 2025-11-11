@@ -1,4 +1,7 @@
+import 'package:autohub/screens/chat/chat_conversation_page.dart';
 import 'package:flutter/material.dart';
+import 'package:autohub/screens/chat/chatpage.dart';
+import 'package:autohub/screens/home/car_detail_page.dart';
 
 class DealerProfileScreen extends StatefulWidget {
   final String dealerName;
@@ -21,7 +24,7 @@ class _DealerProfileScreenState extends State<DealerProfileScreen> {
       'image': 'assets/images/bmw.jpg',
       'name': 'BMW 3 Series',
       'year': '2022',
-      'price': '\$45,000',
+      'price': 'Rs 1,25,00,000',
       'mileage': '15,000 km',
       'condition': 'Excellent',
       'status': 'Available',
@@ -31,7 +34,7 @@ class _DealerProfileScreenState extends State<DealerProfileScreen> {
       'image': 'assets/images/merc.jpg',
       'name': 'Mercedes C-Class',
       'year': '2021',
-      'price': '\$52,000',
+      'price': 'Rs 1,45,00,000',
       'mileage': '22,000 km',
       'condition': 'Like New',
       'status': 'Available',
@@ -41,7 +44,7 @@ class _DealerProfileScreenState extends State<DealerProfileScreen> {
       'image': 'assets/images/car1.jpg',
       'name': 'Audi A4',
       'year': '2023',
-      'price': '\$48,000',
+      'price': 'Rs 1,35,00,000',
       'mileage': '8,000 km',
       'condition': 'Excellent',
       'status': 'Sold',
@@ -51,7 +54,7 @@ class _DealerProfileScreenState extends State<DealerProfileScreen> {
       'image': 'assets/images/car2.jpg',
       'name': 'Toyota Camry',
       'year': '2022',
-      'price': '\$32,000',
+      'price': 'Rs 90,00,000',
       'mileage': '18,000 km',
       'condition': 'Good',
       'status': 'Available',
@@ -161,8 +164,16 @@ class _DealerProfileScreenState extends State<DealerProfileScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Opening chat...')),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatConversationPage(
+                              conversationName: widget.dealerName,
+                              avatar: 'assets/images/Profile.jpg',
+                              carTitle: 'Dealer Inquiry',
+                              isOnline: true,
+                            ),
+                          ),
                         );
                       },
                       icon: const Icon(Icons.message, color: Color(0xFFFFB347)),
@@ -311,60 +322,76 @@ class _DealerProfileScreenState extends State<DealerProfileScreen> {
   }
 
   Widget _buildListingCard(Map<String, dynamic> listing) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2C2C2C),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFB347).withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              listing['image'],
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CarDetailPage(
+              carName: '${listing['year']} ${listing['name']}',
+              price: listing['price'],
+              location: 'Okara, Pakistan',
+              image: listing['image'],
+              specs: '${listing['mileage']} • ${listing['condition']}',
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${listing['year']} ${listing['name']}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontFamily: 'roboto_bold',
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  listing['price'],
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontFamily: 'roboto_bold',
-                    color: Color(0xFFFFB347),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${listing['mileage']} • ${listing['condition']}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.7),
-                    fontFamily: 'roboto_regular',
-                  ),
-                ),
-              ],
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2C2C2C),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFFB347).withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                listing['image'],
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${listing['year']} ${listing['name']}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontFamily: 'roboto_bold',
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    listing['price'],
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontFamily: 'roboto_bold',
+                      color: Color(0xFFFFB347),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${listing['mileage']} • ${listing['condition']}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.7),
+                      fontFamily: 'roboto_regular',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -374,11 +401,11 @@ class _DealerProfileScreenState extends State<DealerProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
-          _buildContactItem(Icons.phone, 'Phone', '+1 (555) 123-4567'),
+          _buildContactItem(Icons.phone, 'Phone', '0300-0000000'),
           const SizedBox(height: 12),
           _buildContactItem(Icons.email, 'Email', 'dealer@autohub.com'),
           const SizedBox(height: 12),
-          _buildContactItem(Icons.location_on, 'Address', '123 Auto St, NY'),
+          _buildContactItem(Icons.location_on, 'Address', 'Okara, Pakistan'),
         ],
       ),
     );

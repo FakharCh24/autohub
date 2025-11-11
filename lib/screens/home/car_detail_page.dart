@@ -1,7 +1,9 @@
+import 'package:autohub/screens/chat/chat_conversation_page.dart';
 import 'package:autohub/screens/home/browse/compare_cars.dart';
 import 'package:autohub/screens/sell/price_alert_setup.dart';
 import 'package:autohub/screens/reviews/reviews_screen.dart';
 import 'package:autohub/screens/profile/dealer_profile_screen.dart';
+import 'package:autohub/screens/chat/chatpage.dart';
 import 'package:flutter/material.dart';
 
 class CarDetailPage extends StatefulWidget {
@@ -569,7 +571,19 @@ class _CarDetailPageState extends State<CarDetailPage> {
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatConversationPage(
+                            conversationName: 'Fakhir Ashraf',
+                            avatar: 'assets/images/default_avatar.png',
+                            carTitle: widget.carName,
+                            isOnline: false,
+                          ),
+                    ),
+                  );
+                },
                 icon: const Icon(Icons.message),
                 label: const Text('Message'),
                 style: OutlinedButton.styleFrom(

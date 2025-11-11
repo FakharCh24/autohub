@@ -5,8 +5,25 @@ import 'package:autohub/screens/home/filter/advanced_filter_screen.dart';
 import 'package:autohub/screens/notifications/notifications_center.dart';
 import 'package:flutter/material.dart';
 
-class StartPage extends StatelessWidget {
+class StartPage extends StatefulWidget {
   const StartPage({super.key});
+
+  @override
+  State<StartPage> createState() => _StartPageState();
+}
+
+class _StartPageState extends State<StartPage> {
+  // Track selected state of quick filters
+  bool isNewListingsSelected = true;
+  bool isPriceDropSelected = true;
+  bool isTopRatedSelected = false;
+  bool isElectricSelected = false;
+
+  // Track selected state of browse categories
+  bool isSUVSelected = false;
+  bool isSedanSelected = false;
+  bool isHatchbackSelected = false;
+  bool isTruckSelected = false;
 
   @override
   Widget build(BuildContext context) {
@@ -149,13 +166,49 @@ class StartPage extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildFilterChip(Icons.fiber_new, "New Listings", true),
+                    _buildFilterChip(
+                      Icons.fiber_new,
+                      "New Listings",
+                      isNewListingsSelected,
+                      () {
+                        setState(() {
+                          isNewListingsSelected = !isNewListingsSelected;
+                        });
+                      },
+                    ),
                     const SizedBox(width: 12),
-                    _buildFilterChip(Icons.trending_down, "Price Drop", true),
+                    _buildFilterChip(
+                      Icons.trending_down,
+                      "Price Drop",
+                      isPriceDropSelected,
+                      () {
+                        setState(() {
+                          isPriceDropSelected = !isPriceDropSelected;
+                        });
+                      },
+                    ),
                     const SizedBox(width: 12),
-                    _buildFilterChip(Icons.star_outline, "Top Rated", false),
+                    _buildFilterChip(
+                      Icons.star_outline,
+                      "Top Rated",
+                      isTopRatedSelected,
+                      () {
+                        setState(() {
+                          isTopRatedSelected = !isTopRatedSelected;
+                        });
+                      },
+                    ),
                     const SizedBox(width: 12),
-                    _buildFilterChip(Icons.electric_car, "Electric", false),
+                    _buildFilterChip(
+                      Icons.electric_car,
+                      "Electric",
+                      isElectricSelected,
+                      () {
+                        setState(() {
+                          isElectricSelected = !isElectricSelected;
+                        });
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -206,14 +259,50 @@ class StartPage extends StatelessWidget {
                 crossAxisSpacing: 12,
                 childAspectRatio: 0.85,
                 children: [
-                  _buildCategoryCard(context, Icons.directions_car, "SUV"),
-                  _buildCategoryCard(context, Icons.car_rental, "Sedan"),
+                  _buildCategoryCard(
+                    context,
+                    Icons.directions_car,
+                    "SUV",
+                    isSUVSelected,
+                    () {
+                      setState(() {
+                        isSUVSelected = !isSUVSelected;
+                      });
+                    },
+                  ),
+                  _buildCategoryCard(
+                    context,
+                    Icons.car_rental,
+                    "Sedan",
+                    isSedanSelected,
+                    () {
+                      setState(() {
+                        isSedanSelected = !isSedanSelected;
+                      });
+                    },
+                  ),
                   _buildCategoryCard(
                     context,
                     Icons.airport_shuttle,
                     "Hatchback",
+                    isHatchbackSelected,
+                    () {
+                      setState(() {
+                        isHatchbackSelected = !isHatchbackSelected;
+                      });
+                    },
                   ),
-                  _buildCategoryCard(context, Icons.local_shipping, "Truck"),
+                  _buildCategoryCard(
+                    context,
+                    Icons.local_shipping,
+                    "Truck",
+                    isTruckSelected,
+                    () {
+                      setState(() {
+                        isTruckSelected = !isTruckSelected;
+                      });
+                    },
+                  ),
                 ],
               ),
 
@@ -244,7 +333,7 @@ class StartPage extends StatelessWidget {
                           "assets/images/car1.jpg",
                           "HONDA CIVIC RS-TURBO 2025",
                           "Rs 90,00,000",
-                          "New York, NY",
+                          "Lahore, Pakistan",
                           true,
                           "Automatic • Petrol • 1500 cc",
                         ),
@@ -253,7 +342,7 @@ class StartPage extends StatelessWidget {
                           "assets/images/car2.jpg",
                           "TOYOTA REVO GR 2022",
                           "Rs 1,250,000",
-                          "Los Angeles, CA",
+                          "Karachi, Pakistan",
                           false,
                           "Manual • Diesel • 2800 cc",
                         ),
@@ -262,7 +351,7 @@ class StartPage extends StatelessWidget {
                           "assets/images/car3.jpg",
                           "2024 Toyota RAV4 Hybrid",
                           "Rs 32,500",
-                          "Chicago, IL",
+                          "Islamabad, Pakistan",
                           false,
                           "Automatic • Hybrid • 2500 cc",
                         ),
@@ -279,77 +368,89 @@ class StartPage extends StatelessWidget {
   }
 
   // 🔹 Helper: Filter Chip
-  static Widget _buildFilterChip(IconData icon, String label, bool selected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        gradient: selected
-            ? const LinearGradient(
-                colors: [Color(0xFFFFB347), Color(0xFFFF8C42)],
-              )
-            : null,
-        color: selected ? null : const Color(0xFF2C2C2C),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: selected
-              ? const Color(0xFFFFB347)
-              : const Color(0xFFFFB347).withOpacity(0.3),
-          width: 1.5,
+  Widget _buildFilterChip(
+    IconData icon,
+    String label,
+    bool selected,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: selected
+              ? const LinearGradient(
+                  colors: [Color(0xFFFFB347), Color(0xFFFF8C42)],
+                )
+              : null,
+          color: selected ? null : const Color(0xFF2C2C2C),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFFFFB347)
+                : const Color(0xFFFFB347).withOpacity(0.3),
+            width: 1.5,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFFFB347).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
         ),
-        boxShadow: selected
-            ? [
-                BoxShadow(
-                  color: const Color(0xFFFFB347).withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : [],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: selected ? Colors.white : const Color(0xFFFFB347),
-            size: 18,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
               color: selected ? Colors.white : const Color(0xFFFFB347),
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
+              size: 18,
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : const Color(0xFFFFB347),
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   // 🔹 Helper: Category Card
-  static Widget _buildCategoryCard(
+  Widget _buildCategoryCard(
     BuildContext context,
     IconData icon,
     String title,
+    bool selected,
+    VoidCallback onTap,
   ) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const CategoryBrowse()),
-        );
-      },
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF2C2C2C),
+          color: selected ? const Color(0xFFFFB347) : const Color(0xFF2C2C2C),
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: const Color(0xFFFFB347).withOpacity(0.3)),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFFFFB347)
+                : const Color(0xFFFFB347).withOpacity(0.3),
+            width: selected ? 2 : 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 4,
+              color: selected
+                  ? const Color(0xFFFFB347).withOpacity(0.4)
+                  : Colors.black.withOpacity(0.2),
+              blurRadius: selected ? 8 : 4,
               offset: const Offset(0, 2),
             ),
           ],
@@ -360,16 +461,22 @@ class StartPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFB347).withOpacity(0.15),
+                color: selected
+                    ? Colors.white.withOpacity(0.2)
+                    : const Color(0xFFFFB347).withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: const Color(0xFFFFB347), size: 28),
+              child: Icon(
+                icon,
+                color: selected ? Colors.white : const Color(0xFFFFB347),
+                size: 28,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               title,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: selected ? Colors.white : Colors.white,
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
               ),
@@ -381,7 +488,7 @@ class StartPage extends StatelessWidget {
   }
 
   // 🔹 Helper: Car Card
-  static Widget carCard(
+  Widget carCard(
     BuildContext context,
     String image,
     String title,

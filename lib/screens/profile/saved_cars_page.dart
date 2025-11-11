@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:autohub/screens/home/car_detail_page.dart';
 
 class SavedCarsPage extends StatefulWidget {
   const SavedCarsPage({super.key});
@@ -13,33 +14,33 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
     {
       'name': 'BMW M3',
       'year': '2022',
-      'price': '\$75,000',
+      'price': 'Rs 2,10,00,000',
       'mileage': '12,000 km',
       'fuel': 'Petrol',
       'transmission': 'Automatic',
-      'location': 'New York',
+      'location': 'Lahore',
       'savedDate': '2 days ago',
       'image': 'assets/images/bmw.jpg',
     },
     {
       'name': 'Mercedes-Benz C-Class',
       'year': '2021',
-      'price': '\$55,000',
+      'price': 'Rs 1,55,00,000',
       'mileage': '25,000 km',
       'fuel': 'Diesel',
       'transmission': 'Automatic',
-      'location': 'Los Angeles',
+      'location': 'Karachi',
       'savedDate': '1 week ago',
       'image': 'assets/images/merc.jpg',
     },
     {
       'name': 'Ford Mustang',
       'year': '2020',
-      'price': '\$45,000',
+      'price': 'Rs 1,25,00,000',
       'mileage': '35,000 km',
       'fuel': 'Petrol',
       'transmission': 'Manual',
-      'location': 'Chicago',
+      'location': 'Islamabad',
       'savedDate': '2 weeks ago',
       'image': 'assets/images/ford.jpg',
     },
@@ -381,10 +382,16 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
   }
 
   void _viewCarDetails(Map<String, dynamic> car) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('View details for ${car['name']}'),
-        backgroundColor: const Color(0xFFFFB347),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CarDetailPage(
+          carName: '${car['year']} ${car['name']}',
+          price: car['price'],
+          location: car['location'],
+          image: car['image'],
+          specs: '${car['mileage']} • ${car['fuel']} • ${car['transmission']}',
+        ),
       ),
     );
   }
