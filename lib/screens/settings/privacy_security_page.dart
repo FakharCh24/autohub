@@ -1,3 +1,4 @@
+import 'package:autohub/screens/chat/blocked_users_page.dart';
 import 'package:flutter/material.dart';
 
 class PrivacySecurityPage extends StatefulWidget {
@@ -122,11 +123,9 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
               'Manage blocked users list',
               Icons.block,
               () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('No blocked users'),
-                    backgroundColor: Color(0xFFFFB347),
-                  ),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => BlockedUsersPage()),
                 );
               },
             ),

@@ -156,45 +156,45 @@ class _SearchPageState extends State<SearchPage> {
             const SizedBox(height: 16),
 
             // Search Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SearchResultPage(
-                        searchQuery: _searchController.text,
-                        category: selectedCategory,
-                        priceRange: priceRange,
-                        fuelType: selectedFuel,
-                        transmission: selectedTransmission,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.search, color: Colors.white),
-                label: const Text(
-                  'Search with Filters',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFB347),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 4,
-                  shadowColor: const Color(0xFFFFB347).withOpacity(0.5),
-                ),
-              ),
-            ),
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: 16),
+            //   child: ElevatedButton.icon(
+            //     onPressed: () {
+            //       Navigator.push(
+            //         context,
+            //         MaterialPageRoute(
+            //           builder: (context) => SearchResultPage(
+            //             searchQuery: _searchController.text,
+            //             category: selectedCategory,
+            //             priceRange: priceRange,
+            //             fuelType: selectedFuel,
+            //             transmission: selectedTransmission,
+            //           ),
+            //         ),
+            //       );
+            //     },
+            //     icon: const Icon(Icons.search, color: Colors.white),
+            //     label: const Text(
+            //       'Search with Filters',
+            //       style: TextStyle(
+            //         color: Colors.white,
+            //         fontWeight: FontWeight.bold,
+            //         fontSize: 16,
+            //       ),
+            //     ),
+            //     style: ElevatedButton.styleFrom(
+            //       backgroundColor: const Color(0xFFFFB347),
+            //       padding: const EdgeInsets.symmetric(vertical: 16),
+            //       shape: RoundedRectangleBorder(
+            //         borderRadius: BorderRadius.circular(12),
+            //       ),
+            //       elevation: 4,
+            //       shadowColor: const Color(0xFFFFB347).withOpacity(0.5),
+            //     ),
+            //   ),
+            // ),
 
-            const SizedBox(height: 20),
+            // const SizedBox(height: 20),
 
             // Search Results
             Expanded(

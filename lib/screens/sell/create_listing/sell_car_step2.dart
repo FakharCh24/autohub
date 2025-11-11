@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 class SellCarStep2 extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -12,6 +14,7 @@ class SellCarStep2 extends StatefulWidget {
 class _SellCarStep2State extends State<SellCarStep2> {
   List<String> selectedImages = [];
   final int maxImages = 10;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -320,14 +323,21 @@ class _SellCarStep2State extends State<SellCarStep2> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // Placeholder image (in real app, use Image.file or Image.network)
-                Container(
-                  color: Colors.grey[800],
-                  child: Icon(
-                    Icons.image,
-                    color: Colors.white.withOpacity(0.5),
-                    size: 40,
-                  ),
+                // Display actual image from file
+                Image.file(
+                  File(selectedImages[index]),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Fallback if image can't be loaded
+                    return Container(
+                      color: Colors.grey[800],
+                      child: Icon(
+                        Icons.broken_image,
+                        color: Colors.white.withOpacity(0.5),
+                        size: 40,
+                      ),
+                    );
+                  },
                 ),
                 // Main Photo Badge
                 if (index == 0)
@@ -376,24 +386,182 @@ class _SellCarStep2State extends State<SellCarStep2> {
   }
 
   void _pickImage() {
-    // In a real app, use image_picker package
-    // For now, we'll simulate adding an image
-    setState(() {
-      if (selectedImages.length < maxImages) {
-        selectedImages.add('image_${selectedImages.length + 1}.jpg');
-      }
-    });
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF2C2C2C),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const Text(
+                  'Add Photo',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFB347).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.photo_library,
+                      color: Color(0xFFFFB347),
+                    ),
+                  ),
+                  title: const Text(
+                    'Choose from Gallery',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImageFromGallery();
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFB347).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      color: Color(0xFFFFB347),
+                    ),
+                  ),
+                  title: const Text(
+                    'Take Photo',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImageFromCamera();
+                  },
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-    // Show instruction for first image
-    if (selectedImages.length == 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('First photo will be your main listing photo'),
-          backgroundColor: const Color(0xFFFFB347),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1920,
+        maxHeight: 1080,
       );
+
+      if (image != null) {
+        setState(() {
+          if (selectedImages.length < maxImages) {
+            selectedImages.add(image.path);
+          }
+        });
+
+        // Show instruction for first image
+        if (selectedImages.length == 1 && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'First photo will be your main listing photo',
+              ),
+              backgroundColor: const Color(0xFFFFB347),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick image: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickImageFromCamera() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+        maxWidth: 1920,
+        maxHeight: 1080,
+      );
+
+      if (image != null) {
+        setState(() {
+          if (selectedImages.length < maxImages) {
+            selectedImages.add(image.path);
+          }
+        });
+
+        // Show instruction for first image
+        if (selectedImages.length == 1 && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                'First photo will be your main listing photo',
+              ),
+              backgroundColor: const Color(0xFFFFB347),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to take photo: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+      }
     }
   }
 
