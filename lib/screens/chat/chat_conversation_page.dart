@@ -104,9 +104,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ChatSettings(
-                      conversationName: widget.conversationName,
-                    ),
+                    builder: (context) =>
+                        ChatSettings(conversationName: widget.conversationName),
                   ),
                 );
               } else if (value == 'media') {
@@ -240,7 +239,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                      ),
                       filled: true,
                       fillColor: const Color(0xFF1A1A1A),
                       border: OutlineInputBorder(
@@ -282,8 +283,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Row(
-        mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isMe) const SizedBox(width: 40),
           Flexible(
