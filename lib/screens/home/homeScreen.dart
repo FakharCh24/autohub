@@ -1,4 +1,4 @@
-import 'package:autohub/screens/pages/navbar.dart';
+import 'package:autohub/screens/home/navbar.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatelessWidget {

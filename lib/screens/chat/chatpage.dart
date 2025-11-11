@@ -1,3 +1,6 @@
+import 'package:autohub/screens/chat/blocked_users_page.dart';
+import 'package:autohub/screens/chat/chat_media_gallery.dart';
+import 'package:autohub/screens/chat/chat_settings.dart';
 import 'package:flutter/material.dart';
 
 class ChatPage extends StatefulWidget {
@@ -74,6 +77,19 @@ class _ChatPageState extends State<ChatPage> {
                 _showSearchDialog();
               },
               icon: const Icon(Icons.search, color: Colors.white),
+              tooltip: 'Search Messages',
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const BlockedUsersPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.block, color: Colors.white),
+              tooltip: 'Blocked Users',
             ),
           ],
         ),
@@ -309,12 +325,71 @@ class _ChatPageState extends State<ChatPage> {
                 ),
               ),
               IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.phone, color: Color(0xFFFFB347)),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatMediaGallery(
+                        conversationName: selectedConversation!,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.photo_library, color: Color(0xFFFFB347)),
+                tooltip: 'Media Gallery',
               ),
-              IconButton(
-                onPressed: () {},
+              PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: Colors.white),
+                color: const Color(0xFF2C2C2C),
+                onSelected: (value) {
+                  if (value == 'settings') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatSettings(
+                          conversationName: selectedConversation!,
+                        ),
+                      ),
+                    );
+                  } else if (value == 'media') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatMediaGallery(
+                          conversationName: selectedConversation!,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                itemBuilder: (BuildContext context) => [
+                  const PopupMenuItem<String>(
+                    value: 'settings',
+                    child: Row(
+                      children: [
+                        Icon(Icons.settings, color: Color(0xFFFFB347)),
+                        SizedBox(width: 12),
+                        Text(
+                          'Chat Settings',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'media',
+                    child: Row(
+                      children: [
+                        Icon(Icons.photo_library, color: Color(0xFFFFB347)),
+                        SizedBox(width: 12),
+                        Text(
+                          'Media Gallery',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

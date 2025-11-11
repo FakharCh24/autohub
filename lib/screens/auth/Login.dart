@@ -1,7 +1,8 @@
 import 'package:autohub/screens/auth/createAccount.dart';
 import 'package:autohub/screens/auth/forgotPassword.dart';
-import 'package:autohub/screens/pages/homeScreen.dart';
+import 'package:autohub/screens/home/homeScreen.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -195,11 +196,14 @@ class LoginPage extends StatelessWidget {
                               ),
                               elevation: 0,
                             ),
-                            onPressed: () {
-                              Navigator.push(
+                            onPressed: () async {
+                              var sharedPrefs =
+                                  await SharedPreferences.getInstance();
+                              sharedPrefs.setBool("Login", true);
+                              Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => HomeScreen(),
+                                  builder: (context) => const HomeScreen(),
                                 ),
                               );
                             },

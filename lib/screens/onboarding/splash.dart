@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:autohub/screens/auth/login.dart';
+import 'package:autohub/screens/home/navbar.dart';
 import 'package:autohub/screens/onboarding/onboarding1.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,20 +16,18 @@ class _SplashState extends State<Splash> {
   @override
   void initState() {
     super.initState();
-    _checkFirstLaunch();
+    _navigateToNextScreen();
   }
 
-  Future<void> _checkFirstLaunch() async {
-    // Get shared preferences instance
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-
-    // Check if this is the first launch
-    bool isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
-
-    // Wait for 2 seconds (splash screen duration)
-    await Future.delayed(Duration(seconds: 2));
+  Future<void> _navigateToNextScreen() async {
+    await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // First check if it's the first launch
+    bool isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
 
     if (isFirstLaunch) {
       // Mark that the app has been launched
@@ -39,8 +38,20 @@ class _SplashState extends State<Splash> {
         context,
         MaterialPageRoute(builder: (context) => const Onboarding1()),
       );
+      return;
+    }
+
+    // If not first launch, check login status
+    bool isLoggedIn = prefs.getBool("Login") ?? false;
+
+    if (isLoggedIn) {
+      // User is logged in, go to home
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const Navbar()),
+      );
     } else {
-      // Navigate directly to login
+      // User not logged in, go to login
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginPage()),
