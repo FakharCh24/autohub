@@ -12,7 +12,6 @@ class ComparisonResultsScreen extends StatefulWidget {
 }
 
 class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
-  // Simplified comparison categories
   final List<Map<String, dynamic>> _comparisonCategories = [
     {
       'title': 'Basic Information',
@@ -64,12 +63,10 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
           ? _buildInsufficientCarsMessage()
           : Column(
               children: [
-                // Car Headers
                 _buildCarHeaders(),
 
                 const Divider(thickness: 1, color: Color(0xFF2C2C2C)),
 
-                // Comparison Table
                 Expanded(
                   child: SingleChildScrollView(
                     child: Column(
@@ -89,7 +86,6 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
       height: 220,
       child: Row(
         children: [
-          // Empty cell for labels
           Container(
             width: 120,
             padding: const EdgeInsets.all(8),
@@ -104,8 +100,6 @@ class _ComparisonResultsScreenState extends State<ComparisonResultsScreen> {
               ),
             ),
           ),
-
-          // Car cards
           ...widget.carsToCompare.map((car) {
             return Expanded(
               child: Container(

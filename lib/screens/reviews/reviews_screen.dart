@@ -17,7 +17,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
   // Sample reviews data
   final List<Map<String, dynamic>> _reviews = [
     {
-      'userName': 'John Doe',
+      'userName': 'Fakhir Ashraf',
       'userImage': 'assets/images/Profile.jpg',
       'rating': 5,
       'date': 'Nov 5, 2025',

@@ -473,7 +473,6 @@ class _ChatPageState extends State<ChatPage> {
                 child: IconButton(
                   onPressed: () {
                     if (_messageController.text.isNotEmpty) {
-                      // Send message logic here
                       _messageController.clear();
                     }
                   },

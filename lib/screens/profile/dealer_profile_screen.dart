@@ -63,7 +63,7 @@ class _DealerProfileScreenState extends State<DealerProfileScreen> {
     return Scaffold(
       backgroundColor: Color(0xFF1A1A1A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFE50914),
+        backgroundColor: const Color(0xFF1A1A1A),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -94,7 +94,11 @@ class _DealerProfileScreenState extends State<DealerProfileScreen> {
             Center(
               child: Text(
                 widget.dealerName,
-                style: const TextStyle(fontSize: 22, fontFamily: 'roboto_bold',color: Colors.white),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontFamily: 'roboto_bold',
+                  color: Colors.white,
+                ),
               ),
             ),
 

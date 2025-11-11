@@ -48,10 +48,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
     try {
       // Get all cars from database
       List<Map<String, dynamic>> allCars = await DbHelper.getInstance.getCars();
-
-      // Filter results based on search criteria
       List<Map<String, dynamic>> filtered = allCars.where((car) {
-        // Search query filter
         if (widget.searchQuery.isNotEmpty) {
           String query = widget.searchQuery.toLowerCase();
           String title = (car[DbHelper.COLUMN_TITLE] ?? '')
@@ -65,15 +62,11 @@ class _SearchResultPageState extends State<SearchResultPage> {
             return false;
           }
         }
-
-        // Category filter
         if (widget.category != null && widget.category != 'All') {
           if (car[DbHelper.COLUMN_CATEGORY] != widget.category) {
             return false;
           }
         }
-
-        // Price range filter
         if (widget.priceRange != null) {
           int price = car[DbHelper.COLUMN_PRICE] ?? 0;
           if (price < widget.priceRange!.start ||
@@ -81,22 +74,16 @@ class _SearchResultPageState extends State<SearchResultPage> {
             return false;
           }
         }
-
-        // Fuel type filter
         if (widget.fuelType != null && widget.fuelType != 'All') {
           if (car[DbHelper.COLUMN_FUEL] != widget.fuelType) {
             return false;
           }
         }
-
-        // Transmission filter
         if (widget.transmission != null && widget.transmission != 'All') {
           if (car[DbHelper.COLUMN_TRANSMISSION] != widget.transmission) {
             return false;
           }
         }
-
-        // Year filter
         if (widget.minYear != null) {
           int year = car[DbHelper.COLUMN_YEAR] ?? 0;
           if (year < widget.minYear!) {
@@ -110,8 +97,6 @@ class _SearchResultPageState extends State<SearchResultPage> {
             return false;
           }
         }
-
-        // Mileage filter
         if (widget.maxMileage != null) {
           int mileage = car[DbHelper.COLUMN_MILEAGE] ?? 0;
           if (mileage > widget.maxMileage!) {
@@ -122,7 +107,6 @@ class _SearchResultPageState extends State<SearchResultPage> {
         return true;
       }).toList();
 
-      // Sort results
       _sortResults(filtered);
 
       setState(() {

@@ -404,7 +404,7 @@ class _CarDetailPageState extends State<CarDetailPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Text(
-                                    'John Doe',
+                                    'Fakhir Ashraf',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,

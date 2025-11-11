@@ -149,7 +149,6 @@ class _CompareCarsState extends State<CompareCars> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        // Navigate to Comparison Results Screen
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -231,42 +230,43 @@ class _CompareCarsState extends State<CompareCars> {
     );
   }
 
-  void _clearComparison() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF2C2C2C),
-          title: const Text(
-            'Clear Comparison',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          content: const Text(
-            'Are you sure you want to clear all cars from comparison?',
-            style: TextStyle(color: Colors.white),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFB347),
-                foregroundColor: const Color(0xFF1A1A1A),
-              ),
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-              },
-              child: const Text('Clear'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  //   void _clearComparison() {
+  //     showDialog(
+  //       context: context,
+  //       builder: (BuildContext context) {
+  //         return AlertDialog(
+  //           backgroundColor: const Color(0xFF2C2C2C),
+  //           title: const Text(
+  //             'Clear Comparison',
+  //             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+  //           ),
+  //           content: const Text(
+  //             'Are you sure you want to clear all cars from comparison?',
+  //             style: TextStyle(color: Colors.white),
+  //           ),
+  //           actions: [
+  //             TextButton(
+  //               onPressed: () => Navigator.pop(context),
+  //               child: const Text(
+  //                 'Cancel',
+  //                 style: TextStyle(color: Colors.white),
+  //               ),
+  //             ),
+  //             ElevatedButton(
+  //               style: ElevatedButton.styleFrom(
+  //                 backgroundColor: const Color(0xFFFFB347),
+  //                 foregroundColor: const Color(0xFF1A1A1A),
+  //               ),
+  //               onPressed: () {
+  //                 Navigator.pop(context);
+  //                 Navigator.pop(context);
+  //               },
+  //               child: const Text('Clear'),
+  //             ),
+  //           ],
+  //         );
+  //       },
+  //     );
+  //   }
+  // }
 }

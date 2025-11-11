@@ -9,7 +9,7 @@ class AdvancedFilterScreen extends StatefulWidget {
 
 class _AdvancedFilterScreenState extends State<AdvancedFilterScreen> {
   RangeValues _priceRange = const RangeValues(0, 20000000);
-  RangeValues _yearRange = const RangeValues(2000, 2024);
+  RangeValues _yearRange = const RangeValues(1990, 2024);
   RangeValues _mileageRange = const RangeValues(0, 200000);
 
   List<String> selectedBrands = [];
@@ -59,7 +59,6 @@ class _AdvancedFilterScreenState extends State<AdvancedFilterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Price Range
                   _buildSectionHeader('Price Range (PKR)'),
                   _buildRangeSlider(
                     _priceRange,
@@ -338,7 +337,7 @@ class _AdvancedFilterScreenState extends State<AdvancedFilterScreen> {
   void _resetFilters() {
     setState(() {
       _priceRange = const RangeValues(0, 20000000);
-      _yearRange = const RangeValues(2000, 2024);
+      _yearRange = const RangeValues(1990, 2024);
       _mileageRange = const RangeValues(0, 200000);
       selectedBrands.clear();
       selectedCategories.clear();

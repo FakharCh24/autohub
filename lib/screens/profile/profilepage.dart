@@ -1,3 +1,4 @@
+import 'package:autohub/screens/auth/Login.dart';
 import 'package:autohub/screens/home/browse/recently_viewed.dart';
 import 'package:autohub/screens/notifications/notifications_center.dart';
 import 'package:autohub/screens/sell/my_listings_page.dart';
@@ -508,8 +509,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () {
-                Navigator.pop(context);
-                // Implement logout logic
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                );
               },
               child: const Text('Logout'),
             ),

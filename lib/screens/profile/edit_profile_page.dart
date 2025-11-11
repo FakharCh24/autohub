@@ -9,10 +9,10 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'John Doe');
-  final _emailController = TextEditingController(text: 'john.doe@email.com');
-  final _phoneController = TextEditingController(text: '+1 234 567 8900');
-  final _locationController = TextEditingController(text: 'New York, USA');
+  final _nameController = TextEditingController(text: 'Fakhir Ashraf');
+  final _emailController = TextEditingController(text: 'Fch962965@gmail.com');
+  final _phoneController = TextEditingController(text: '0301-7371071');
+  final _locationController = TextEditingController(text: 'Okara, Pakistan');
   final _bioController = TextEditingController(
     text: 'Car enthusiast and verified seller.',
   );
