@@ -3,7 +3,7 @@ import 'package:autohub/screens/home/browse/compare_cars.dart';
 import 'package:autohub/screens/sell/price_alert_setup.dart';
 import 'package:autohub/screens/reviews/reviews_screen.dart';
 import 'package:autohub/screens/profile/dealer_profile_screen.dart';
-import 'package:autohub/screens/chat/chatpage.dart';
+// import 'package:autohub/screens/chat/chatpage.dart';
 import 'package:flutter/material.dart';
 
 class CarDetailPage extends StatefulWidget {

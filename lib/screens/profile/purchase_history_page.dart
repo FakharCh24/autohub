@@ -13,7 +13,7 @@ class _PurchaseHistoryPageState extends State<PurchaseHistoryPage> {
     {
       'carName': 'BMW M3',
       'year': '2022',
-      'price': '\$75,000',
+      'price': 'Rs 75,000,00',
       'purchaseDate': 'Jan 15, 2024',
       'seller': 'John Motors',
       'status': 'Completed',
@@ -24,7 +24,7 @@ class _PurchaseHistoryPageState extends State<PurchaseHistoryPage> {
     {
       'carName': 'Mercedes-Benz C-Class',
       'year': '2021',
-      'price': '\$55,000',
+      'price': 'Rs 55,000,00',
       'purchaseDate': 'Dec 10, 2023',
       'seller': 'Auto Dealership',
       'status': 'Completed',
@@ -35,7 +35,7 @@ class _PurchaseHistoryPageState extends State<PurchaseHistoryPage> {
     {
       'carName': 'Ford Mustang',
       'year': '2020',
-      'price': '\$45,000',
+      'price': 'Rs 45,000,00',
       'purchaseDate': 'Nov 5, 2023',
       'seller': 'Classic Cars Inc',
       'status': 'Completed',
