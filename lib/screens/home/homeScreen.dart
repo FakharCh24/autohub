@@ -1,4 +1,5 @@
 import 'package:autohub/screens/home/navbar.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -43,9 +44,10 @@ class HomeScreen extends StatelessWidget {
             endIndent: 20,
           ),
           const SizedBox(height: 50),
-          const Text(
-            'Welcome to AutoHub!',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          Text(
+            'Welcome, ${FirebaseAuth.instance.currentUser?.email ?? 'User'}!',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 5),
           const Text(
