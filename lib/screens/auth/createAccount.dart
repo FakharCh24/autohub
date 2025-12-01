@@ -1,9 +1,123 @@
 import 'package:autohub/screens/auth/Login.dart';
 import 'package:autohub/screens/auth/profilesetup.dart';
+import 'package:autohub/helper/auth_service.dart';
 import 'package:flutter/material.dart';
 
-class CreateAccountPage extends StatelessWidget {
+class CreateAccountPage extends StatefulWidget {
   const CreateAccountPage({super.key});
+
+  @override
+  State<CreateAccountPage> createState() => _CreateAccountPageState();
+}
+
+class _CreateAccountPageState extends State<CreateAccountPage> {
+  final AuthService _authService = AuthService();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _mobileController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _mobileController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text('Error', style: TextStyle(color: Colors.white)),
+        content: Text(message, style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK', style: TextStyle(color: Color(0xFFFFB347))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  Future<void> _handleSignUp() async {
+    // Validate inputs
+    if (_emailController.text.trim().isEmpty) {
+      _showErrorDialog('Please enter your email address');
+      return;
+    }
+
+    if (!_isValidEmail(_emailController.text.trim())) {
+      _showErrorDialog('Please enter a valid email address');
+      return;
+    }
+
+    if (_mobileController.text.trim().isEmpty) {
+      _showErrorDialog('Please enter your mobile number');
+      return;
+    }
+
+    if (_passwordController.text.isEmpty) {
+      _showErrorDialog('Please enter a password');
+      return;
+    }
+
+    if (_passwordController.text.length < 6) {
+      _showErrorDialog('Password must be at least 6 characters long');
+      return;
+    }
+
+    if (_confirmPasswordController.text.isEmpty) {
+      _showErrorDialog('Please confirm your password');
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showErrorDialog('Passwords do not match');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Create account with Firebase
+      final result = await _authService.signUpWithEmail(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      if (result['success']) {
+        // Navigate to profile setup
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const ProfileSetup()),
+        );
+      } else {
+        _showErrorDialog(result['message']);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +205,8 @@ class CreateAccountPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'Enter your email',
@@ -132,6 +248,8 @@ class CreateAccountPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       TextField(
+                        controller: _mobileController,
+                        keyboardType: TextInputType.phone,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'Enter your mobile no',
@@ -173,7 +291,8 @@ class CreateAccountPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       TextField(
-                        obscureText: true,
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'Enter your password',
@@ -183,6 +302,19 @@ class CreateAccountPage extends StatelessWidget {
                           ),
                           filled: true,
                           fillColor: Colors.transparent,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(25),
                             borderSide: BorderSide(
@@ -214,7 +346,8 @@ class CreateAccountPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       TextField(
-                        obscureText: true,
+                        controller: _confirmPasswordController,
+                        obscureText: _obscureConfirmPassword,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'Enter your password',
@@ -224,6 +357,20 @@ class CreateAccountPage extends StatelessWidget {
                           ),
                           filled: true,
                           fillColor: Colors.transparent,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirmPassword =
+                                    !_obscureConfirmPassword;
+                              });
+                            },
+                          ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(25),
                             borderSide: BorderSide(
@@ -257,33 +404,35 @@ class CreateAccountPage extends StatelessWidget {
                             ),
                             elevation: 0,
                           ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ProfileSetup(),
-                              ),
-                            );
-                          },
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Create an account',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
+                          onPressed: _isLoading ? null : _handleSignUp,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Create an account',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Icon(
+                                      Icons.waving_hand,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              SizedBox(width: 8),
-                              Icon(
-                                Icons.waving_hand,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ],
-                          ),
                         ),
                       ),
                       const SizedBox(height: 40),

@@ -1,11 +1,95 @@
 import 'package:autohub/screens/auth/createAccount.dart';
 import 'package:autohub/screens/auth/forgotPassword.dart';
 import 'package:autohub/screens/home/homeScreen.dart';
+import 'package:autohub/helper/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final AuthService _authService = AuthService();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text('Error', style: TextStyle(color: Colors.white)),
+        content: Text(message, style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK', style: TextStyle(color: Color(0xFFFFB347))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleLogin() async {
+    // Validate inputs
+    if (_emailController.text.trim().isEmpty) {
+      _showErrorDialog('Please enter your email address');
+      return;
+    }
+
+    if (_passwordController.text.isEmpty) {
+      _showErrorDialog('Please enter your password');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Sign in with Firebase
+      final result = await _authService.signInWithEmail(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      if (result['success']) {
+        // Save login state
+        var sharedPrefs = await SharedPreferences.getInstance();
+        await sharedPrefs.setBool("Login", true);
+        await sharedPrefs.setString("userEmail", _emailController.text.trim());
+
+        // Navigate to home screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } else {
+        _showErrorDialog(result['message']);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,6 +179,8 @@ class LoginPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         TextField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: 'Enter Your Email Address',
@@ -136,6 +222,8 @@ class LoginPage extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         TextField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: 'Enter Your Password',
@@ -145,6 +233,19 @@ class LoginPage extends StatelessWidget {
                             ),
                             filled: true,
                             fillColor: Colors.transparent,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: Colors.white70,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(25),
                               borderSide: BorderSide(
@@ -196,36 +297,35 @@ class LoginPage extends StatelessWidget {
                               ),
                               elevation: 0,
                             ),
-                            onPressed: () async {
-                              var sharedPrefs =
-                                  await SharedPreferences.getInstance();
-                              sharedPrefs.setBool("Login", true);
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const HomeScreen(),
-                                ),
-                              );
-                            },
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Login',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
+                            onPressed: _isLoading ? null : _handleLogin,
+                            child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'Login',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Icon(
+                                        Icons.waving_hand,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                SizedBox(width: 8),
-                                Icon(
-                                  Icons.waving_hand,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ],
-                            ),
                           ),
                         ),
                         const SizedBox(height: 40),

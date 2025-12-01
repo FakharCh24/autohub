@@ -1,13 +1,88 @@
-import 'package:autohub/screens/auth/verifyotp.dart';
+import 'package:autohub/helper/auth_service.dart';
 import 'package:flutter/material.dart';
 
-class ForgotPasswordPage extends StatelessWidget {
+class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final TextEditingController emailController = TextEditingController();
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+}
 
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
+  final AuthService _authService = AuthService();
+  final TextEditingController _emailController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  void _showDialog(String title, String message, bool isSuccess) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content: Text(message, style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              if (isSuccess) {
+                Navigator.pop(context); // Go back to login screen
+              }
+            },
+            child: const Text('OK', style: TextStyle(color: Color(0xFFFFB347))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  Future<void> _handlePasswordReset() async {
+    if (_emailController.text.trim().isEmpty) {
+      _showDialog('Error', 'Please enter your email address', false);
+      return;
+    }
+
+    if (!_isValidEmail(_emailController.text.trim())) {
+      _showDialog('Error', 'Please enter a valid email address', false);
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final result = await _authService.sendPasswordResetEmail(
+        _emailController.text,
+      );
+
+      if (!mounted) return;
+
+      if (result['success']) {
+        _showDialog('Success', result['message'], true);
+      } else {
+        _showDialog('Error', result['message'], false);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
@@ -75,7 +150,7 @@ class ForgotPasswordPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       TextField(
-                        controller: emailController,
+                        controller: _emailController,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'name@example.com',
@@ -118,36 +193,35 @@ class ForgotPasswordPage extends StatelessWidget {
                             ),
                             elevation: 0,
                           ),
-                          onPressed: () {
-                            debugPrint(
-                              "Reset link sent to: ${emailController.text}",
-                            );
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => VerifyOtp(),
-                              ),
-                            );
-                          },
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Send Reset Link',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
+                          onPressed: _isLoading ? null : _handlePasswordReset,
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Send Reset Link',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Icon(
+                                      Icons.email_outlined,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              SizedBox(width: 8),
-                              Icon(
-                                Icons.email_outlined,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ],
-                          ),
                         ),
                       ),
                       const SizedBox(height: 30),

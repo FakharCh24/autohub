@@ -8,7 +8,9 @@ import 'package:autohub/screens/settings/language_selection_page.dart';
 import 'package:autohub/screens/settings/privacy_security_page.dart';
 import 'package:autohub/screens/settings/send_feedback_page.dart';
 import 'package:autohub/screens/settings/terms_conditions_page.dart';
+import 'package:autohub/helper/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'edit_profile_page.dart';
 import 'saved_cars_page.dart';
 import 'purchase_history_page.dart';
@@ -508,10 +510,23 @@ class _ProfilePageState extends State<ProfilePage> {
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                // Sign out from Firebase
+                final authService = AuthService();
+                await authService.signOut();
+
+                // Clear local preferences
+                var sharedPrefs = await SharedPreferences.getInstance();
+                await sharedPrefs.setBool("Login", false);
+                await sharedPrefs.remove("userEmail");
+
+                if (!context.mounted) return;
+
+                // Navigate to login page and clear navigation stack
+                Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => LoginPage()),
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                  (route) => false,
                 );
               },
               child: const Text('Logout'),

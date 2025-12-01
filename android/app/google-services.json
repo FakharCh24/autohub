@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "90103062148",
+    "project_id": "autohub-67126",
+    "storage_bucket": "autohub-67126.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:90103062148:android:eb121132346e2b6c212cd1",
+        "android_client_info": {
+          "package_name": "com.example.autohub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBaxUaaSIgPd-wzOUJyMcGL8ivscRBmNak"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

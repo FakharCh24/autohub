@@ -19,6 +19,8 @@ dependencies:
   path_provider: ^2.1.5
   path: ^1.9.1
   image_picker: ^1.0.7
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
 
 dev_dependencies:
   flutter_test:
