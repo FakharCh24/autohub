@@ -527,10 +527,7 @@ class _EditListingScreenState extends State<EditListingScreen> {
       // If price changed, trigger price monitoring for alerts
       if (oldPrice != newPrice) {
         print('Price changed from $oldPrice to $newPrice for car $carId');
-        await _firestoreHelper.updateCar(
-          carId: carId,
-          price: newPrice,
-        );
+        await _firestoreHelper.updateCar(carId: carId, price: newPrice);
       }
 
       if (mounted) {
