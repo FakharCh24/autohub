@@ -1,6 +1,6 @@
 import 'package:autohub/screens/auth/createAccount.dart';
 import 'package:autohub/screens/auth/forgotPassword.dart';
-import 'package:autohub/screens/home/homeScreen.dart';
+import 'package:autohub/screens/home/navbar.dart';
 import 'package:autohub/helper/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -67,12 +67,13 @@ class _LoginPageState extends State<LoginPage> {
         // Save login state
         var sharedPrefs = await SharedPreferences.getInstance();
         await sharedPrefs.setBool("Login", true);
+        await sharedPrefs.setBool("isFirstLaunch", false);
         await sharedPrefs.setString("userEmail", _emailController.text.trim());
 
-        // Navigate to home screen
+        // Navigate to home screen (Navbar)
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const Navbar()),
         );
       } else {
         _showErrorDialog(result['message']);

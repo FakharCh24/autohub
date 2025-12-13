@@ -4,7 +4,9 @@ import 'package:autohub/screens/sell/create_listing/sell_car_step1.dart';
 import 'package:autohub/screens/sell/create_listing/sell_car_step2.dart';
 import 'package:autohub/screens/sell/create_listing/sell_car_step3.dart';
 import 'package:flutter/material.dart';
-import '../../helper/db_helper.dart';
+import 'dart:io';
+import '../../helper/firestore_helper.dart';
+import '../../helper/storage_helper.dart';
 import 'my_listings_page.dart';
 
 class SellPage extends StatefulWidget {
@@ -391,13 +393,14 @@ class _SellPageState extends State<SellPage> {
         return;
       }
 
-      final step1Data = await Navigator.of(context, rootNavigator: false).push<Map<String, dynamic>>(
-        MaterialPageRoute<Map<String, dynamic>>(
-          builder: (ctx) {
-            return SellCarStep1(initialData: carData);
-          },
-        ),
-      );
+      final step1Data = await Navigator.of(context, rootNavigator: false)
+          .push<Map<String, dynamic>>(
+            MaterialPageRoute<Map<String, dynamic>>(
+              builder: (ctx) {
+                return SellCarStep1(initialData: carData);
+              },
+            ),
+          );
 
       print('Step 1 completed with data: $step1Data');
 
@@ -472,18 +475,31 @@ class _SellPageState extends State<SellPage> {
         ),
       );
 
-      // Save to database
-      final success = await DbHelper.getInstance.addCar(
+      // Upload images to Firebase Storage
+      List<String> imageUrls = [];
+      final imagePaths = (carData['images'] as List<String>?) ?? [];
+
+      for (String imagePath in imagePaths) {
+        final imageFile = File(imagePath);
+        final url = await StorageHelper.instance.uploadCarImage(imageFile);
+        if (url != null) {
+          imageUrls.add(url);
+        }
+      }
+
+      // Save to Firestore
+      final carId = await FirestoreHelper.instance.addCar(
         title: carData['title'] ?? '',
         price: carData['price'] ?? 0,
-        desc: carData['description'] ?? '',
+        description: carData['description'] ?? '',
         year: carData['year'] ?? 2020,
         mileage: carData['mileage'] ?? 0,
         category: carData['category'] ?? 'Sedan',
         fuel: carData['fuelType'] ?? 'Petrol',
         transmission: carData['transmission'] ?? 'Manual',
         condition: carData['condition'] ?? 'Used',
-        images: (carData['images'] as List<String>?) ?? [],
+        location: carData['city'] ?? 'Lahore',
+        imageUrls: imageUrls,
       );
 
       // Close loading
@@ -491,7 +507,7 @@ class _SellPageState extends State<SellPage> {
         Navigator.of(context).pop();
       }
 
-      if (success) {
+      if (carId != null) {
         // Navigate to success screen
         if (mounted) {
           Navigator.of(context).pushReplacement(

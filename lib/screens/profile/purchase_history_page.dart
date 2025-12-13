@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:autohub/helper/firestore_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PurchaseHistoryPage extends StatefulWidget {
   const PurchaseHistoryPage({super.key});
@@ -8,42 +10,7 @@ class PurchaseHistoryPage extends StatefulWidget {
 }
 
 class _PurchaseHistoryPageState extends State<PurchaseHistoryPage> {
-  // Sample purchase history data
-  final List<Map<String, dynamic>> _purchases = [
-    {
-      'carName': 'BMW M3',
-      'year': '2022',
-      'price': 'Rs 75,000,00',
-      'purchaseDate': 'Jan 15, 2024',
-      'seller': 'John Motors',
-      'status': 'Completed',
-      'paymentMethod': 'Bank Transfer',
-      'transactionId': 'TXN123456789',
-      'image': 'assets/images/bmw.jpg',
-    },
-    {
-      'carName': 'Mercedes-Benz C-Class',
-      'year': '2021',
-      'price': 'Rs 55,000,00',
-      'purchaseDate': 'Dec 10, 2023',
-      'seller': 'Auto Dealership',
-      'status': 'Completed',
-      'paymentMethod': 'Credit Card',
-      'transactionId': 'TXN987654321',
-      'image': 'assets/images/merc.jpg',
-    },
-    {
-      'carName': 'Ford Mustang',
-      'year': '2020',
-      'price': 'Rs 45,000,00',
-      'purchaseDate': 'Nov 5, 2023',
-      'seller': 'Classic Cars Inc',
-      'status': 'Completed',
-      'paymentMethod': 'Cash',
-      'transactionId': 'TXN456789123',
-      'image': 'assets/images/ford.jpg',
-    },
-  ];
+  final FirestoreHelper _firestoreHelper = FirestoreHelper.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -66,79 +33,113 @@ class _PurchaseHistoryPageState extends State<PurchaseHistoryPage> {
         ),
         centerTitle: true,
       ),
-      body: _purchases.isEmpty
-          ? _buildEmptyState()
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Summary Stats
-                  Container(
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFFB347), Color(0xFFFF8C00)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text(
-                          'Total Purchases',
-                          style: TextStyle(
-                            color: Color(0xFF1A1A1A),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${_purchases.length}',
-                          style: const TextStyle(
-                            color: Color(0xFF1A1A1A),
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Cars Purchased',
-                          style: TextStyle(
-                            color: const Color(0xFF1A1A1A).withOpacity(0.8),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _firestoreHelper.getPurchaseHistory(),
+        builder: (context, snapshot) {
+          // Loading state
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFFFFB347)),
+            );
+          }
 
-                  // Purchase List
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Recent Purchases',
-                          style: TextStyle(
-                            color: Color(0xFFFFB347),
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        ..._purchases.map(
-                          (purchase) => _buildPurchaseCard(purchase),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
+          // Error state
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ],
               ),
+            );
+          }
+
+          final purchases = snapshot.data ?? [];
+
+          // Empty state
+          if (purchases.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                // Summary Stats
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFB347), Color(0xFFFF8C00)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Total Purchases',
+                        style: TextStyle(
+                          color: Color(0xFF1A1A1A),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${purchases.length}',
+                        style: const TextStyle(
+                          color: Color(0xFF1A1A1A),
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Cars Purchased',
+                        style: TextStyle(
+                          color: const Color(0xFF1A1A1A).withOpacity(0.8),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Purchase List
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Recent Purchases',
+                        style: TextStyle(
+                          color: Color(0xFFFFB347),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ...purchases.map(
+                        (purchase) => _buildPurchaseCard(purchase),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ],
             ),
+          );
+        },
+      ),
     );
   }
 
@@ -175,6 +176,37 @@ class _PurchaseHistoryPageState extends State<PurchaseHistoryPage> {
   }
 
   Widget _buildPurchaseCard(Map<String, dynamic> purchase) {
+    // Extract car data and format display
+    final carData = purchase['carData'] as Map<String, dynamic>?;
+    final sellerData = purchase['sellerData'] as Map<String, dynamic>?;
+
+    final carName = carData?['title'] ?? 'Unknown Car';
+    final year = carData?['year']?.toString() ?? 'N/A';
+    final price = 'Rs ${purchase['price'] ?? 0}';
+    final seller = sellerData?['name'] ?? 'Unknown Seller';
+    final status = purchase['status'] ?? 'Completed';
+    final paymentMethod = purchase['paymentMethod'] ?? 'N/A';
+    final transactionId = purchase['id'] ?? 'N/A';
+
+    // Format purchase date
+    String purchaseDate = 'N/A';
+    if (purchase['purchaseDate'] != null) {
+      try {
+        final timestamp = purchase['purchaseDate'];
+        if (timestamp is Timestamp) {
+          final date = timestamp.toDate();
+          purchaseDate = '${date.day}/${date.month}/${date.year}';
+        }
+      } catch (e) {
+        print('Error formatting date: $e');
+      }
+    }
+
+    // Get car image
+    final imageUrl = carData?['imageUrls']?.isNotEmpty == true
+        ? carData!['imageUrls'][0]
+        : null;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -192,24 +224,35 @@ class _PurchaseHistoryPageState extends State<PurchaseHistoryPage> {
                   topLeft: Radius.circular(12),
                   bottomLeft: Radius.circular(12),
                 ),
-                child: Image.asset(
-                  purchase['image'],
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 100,
-                      height: 100,
-                      color: const Color(0xFF1A1A1A),
-                      child: const Icon(
-                        Icons.car_rental,
-                        size: 40,
-                        color: Colors.white54,
+                child: imageUrl != null
+                    ? Image.network(
+                        imageUrl,
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 100,
+                            height: 100,
+                            color: const Color(0xFF1A1A1A),
+                            child: const Icon(
+                              Icons.car_rental,
+                              size: 40,
+                              color: Colors.white54,
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
+                        width: 100,
+                        height: 100,
+                        color: const Color(0xFF1A1A1A),
+                        child: const Icon(
+                          Icons.car_rental,
+                          size: 40,
+                          color: Colors.white54,
+                        ),
                       ),
-                    );
-                  },
-                ),
               ),
               const SizedBox(width: 12),
 
@@ -221,16 +264,18 @@ class _PurchaseHistoryPageState extends State<PurchaseHistoryPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        purchase['carName'],
+                        carName,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        purchase['year'],
+                        year,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.6),
                           fontSize: 12,
@@ -238,7 +283,7 @@ class _PurchaseHistoryPageState extends State<PurchaseHistoryPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        purchase['price'],
+                        price,
                         style: const TextStyle(
                           color: Color(0xFFFFB347),
                           fontSize: 18,
@@ -255,7 +300,7 @@ class _PurchaseHistoryPageState extends State<PurchaseHistoryPage> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            purchase['purchaseDate'],
+                            purchaseDate,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.6),
                               fontSize: 12,
@@ -306,19 +351,13 @@ class _PurchaseHistoryPageState extends State<PurchaseHistoryPage> {
                     ),
                     child: Column(
                       children: [
-                        _buildDetailRow('Seller', purchase['seller']),
+                        _buildDetailRow('Seller', seller),
                         const SizedBox(height: 8),
-                        _buildDetailRow('Status', purchase['status']),
+                        _buildDetailRow('Status', status),
                         const SizedBox(height: 8),
-                        _buildDetailRow(
-                          'Payment Method',
-                          purchase['paymentMethod'],
-                        ),
+                        _buildDetailRow('Payment Method', paymentMethod),
                         const SizedBox(height: 8),
-                        _buildDetailRow(
-                          'Transaction ID',
-                          purchase['transactionId'],
-                        ),
+                        _buildDetailRow('Transaction ID', transactionId),
                         const SizedBox(height: 16),
                         Row(
                           children: [

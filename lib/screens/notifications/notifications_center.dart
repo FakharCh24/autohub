@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'notification_details.dart';
 import 'notification_settings.dart';
+import '../../helper/firestore_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class NotificationsCenter extends StatefulWidget {
   const NotificationsCenter({super.key});
@@ -11,68 +13,52 @@ class NotificationsCenter extends StatefulWidget {
 
 class _NotificationsCenterState extends State<NotificationsCenter> {
   String selectedTab = 'All';
-  final List<Map<String, dynamic>> notifications = [
-    {
-      'id': 1,
-      'title': 'New Message',
-      'message': 'Ahmed Ali sent you a message about BMW X5',
-      'type': 'message',
-      'time': '5 min ago',
-      'isRead': false,
-      'icon': Icons.message,
-      'color': Colors.blue,
-    },
-    {
-      'id': 2,
-      'title': 'Price Drop Alert',
-      'message': 'Mercedes C-Class price dropped to Rs 1,45,00,000',
-      'type': 'alert',
-      'time': '1 hour ago',
-      'isRead': false,
-      'icon': Icons.local_offer,
-      'color': Colors.orange,
-    },
-    {
-      'id': 3,
-      'title': 'Listing Approved',
-      'message': 'Your BMW M3 listing has been approved',
-      'type': 'system',
-      'time': '2 hours ago',
-      'isRead': true,
-      'icon': Icons.check_circle,
-      'color': Colors.green,
-    },
-    {
-      'id': 4,
-      'title': 'Test Drive Request',
-      'message': 'Sarah Khan requested a test drive for your car',
-      'type': 'appointment',
-      'time': '3 hours ago',
-      'isRead': false,
-      'icon': Icons.calendar_today,
-      'color': Colors.purple,
-    },
-    {
-      'id': 5,
-      'title': 'New Follower',
-      'message': 'Usman Sheikh started following you',
-      'type': 'social',
-      'time': '5 hours ago',
-      'isRead': true,
-      'icon': Icons.person_add,
-      'color': Colors.teal,
-    },
-    {
-      'id': 6,
-      'title': 'Saved Search Alert',
-      'message': '3 new cars match your saved search criteria',
-      'type': 'alert',
-      'time': '1 day ago',
-      'isRead': true,
-      'icon': Icons.search,
-      'color': Colors.orange,
-    },
-  ];
+
+  List<Map<String, dynamic>> _filterNotifications(
+    List<Map<String, dynamic>> notifications,
+  ) {
+    if (selectedTab == 'All') return notifications;
+    if (selectedTab == 'Unread') {
+      return notifications.where((n) => n['isRead'] == false).toList();
+    }
+    return notifications
+        .where((n) => n['type'] == selectedTab.toLowerCase())
+        .toList();
+  }
+
+  IconData _getIconForType(String type) {
+    switch (type.toLowerCase()) {
+      case 'message':
+        return Icons.message;
+      case 'alert':
+        return Icons.local_offer;
+      case 'system':
+        return Icons.check_circle;
+      case 'appointment':
+        return Icons.calendar_today;
+      case 'social':
+        return Icons.person_add;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _getColorForType(String type) {
+    switch (type.toLowerCase()) {
+      case 'message':
+        return Colors.blue;
+      case 'alert':
+        return Colors.orange;
+      case 'system':
+        return Colors.green;
+      case 'appointment':
+        return Colors.purple;
+      case 'social':
+        return Colors.teal;
+      default:
+        return const Color(0xFFFFB347);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,93 +96,150 @@ class _NotificationsCenterState extends State<NotificationsCenter> {
             icon: const Icon(Icons.more_vert, color: Colors.white),
             color: const Color(0xFF2C2C2C),
             onSelected: (value) {
-              if (value == 'mark_all') {
-                _markAllAsRead();
-              } else if (value == 'clear_all') {
-                _clearAll();
-              }
+              // Removed mark_all and clear_all - not needed with real-time data
             },
             itemBuilder: (context) => [
               const PopupMenuItem(
-                value: 'mark_all',
-                child: Text(
-                  'Mark all as read',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'clear_all',
-                child: Text('Clear all', style: TextStyle(color: Colors.white)),
+                value: 'refresh',
+                child: Text('Refresh', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Tabs
-          Container(
-            height: 50,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2C2C2C),
-              border: Border(
-                bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: FirestoreHelper.instance.getUserNotifications(),
+        builder: (context, snapshot) {
+          // Loading state
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFB347)),
               ),
-            ),
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _buildTab('All'),
-                _buildTab('Messages'),
-                _buildTab('Alerts'),
-                _buildTab('System'),
-                _buildTab('Social'),
-              ],
-            ),
-          ),
+            );
+          }
 
-          // Notifications Count
-          if (_getFilteredNotifications().isNotEmpty)
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${_getUnreadCount()} Unread',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 14,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _markAllAsRead,
-                    child: const Text(
-                      'Mark all as read',
-                      style: TextStyle(color: Color(0xFFFFB347)),
-                    ),
-                  ),
-                ],
+          // Error state
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error loading notifications: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white),
               ),
-            ),
+            );
+          }
 
-          // Notifications List
-          Expanded(
-            child: _getFilteredNotifications().isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _getFilteredNotifications().length,
-                    itemBuilder: (context, index) {
-                      return _buildNotificationCard(
-                        _getFilteredNotifications()[index],
-                      );
-                    },
+          final allNotifications = snapshot.data ?? [];
+          final filteredNotifications = _filterNotifications(allNotifications);
+          final unreadCount = allNotifications
+              .where((n) => n['isRead'] == false)
+              .length;
+
+          return Column(
+            children: [
+              // Tabs
+              Container(
+                height: 50,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C2C2C),
+                  border: Border(
+                    bottom: BorderSide(color: Colors.white.withOpacity(0.1)),
                   ),
-          ),
-        ],
+                ),
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    _buildTab('All'),
+                    _buildTab('Unread'),
+                    _buildTab('Message'),
+                    _buildTab('Alert'),
+                    _buildTab('System'),
+                  ],
+                ),
+              ),
+
+              // Notifications Count
+              if (filteredNotifications.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '$unreadCount Unread',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: 14,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          // Mark all as read
+                          for (var notification in allNotifications) {
+                            if (notification['isRead'] == false) {
+                              await FirestoreHelper.instance
+                                  .markNotificationAsRead(notification['id']);
+                            }
+                          }
+                        },
+                        child: const Text(
+                          'Mark all as read',
+                          style: TextStyle(color: Color(0xFFFFB347)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // Notifications List
+              Expanded(
+                child: filteredNotifications.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: filteredNotifications.length,
+                        itemBuilder: (context, index) {
+                          final notification = filteredNotifications[index];
+                          // Add icon and color dynamically
+                          notification['icon'] = _getIconForType(
+                            notification['type'] ?? '',
+                          );
+                          notification['color'] = _getColorForType(
+                            notification['type'] ?? '',
+                          );
+
+                          // Format timestamp
+                          final createdAt =
+                              notification['createdAt'] as Timestamp?;
+                          if (createdAt != null) {
+                            final DateTime dateTime = createdAt.toDate();
+                            final Duration difference = DateTime.now()
+                                .difference(dateTime);
+
+                            if (difference.inMinutes < 60) {
+                              notification['time'] =
+                                  '${difference.inMinutes} min ago';
+                            } else if (difference.inHours < 24) {
+                              notification['time'] =
+                                  '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+                            } else if (difference.inDays < 7) {
+                              notification['time'] =
+                                  '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+                            } else {
+                              notification['time'] =
+                                  '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+                            }
+                          }
+
+                          return _buildNotificationCard(notification);
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -245,9 +288,8 @@ class _NotificationsCenterState extends State<NotificationsCenter> {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       onDismissed: (direction) {
-        setState(() {
-          notifications.remove(notification);
-        });
+        // Note: In a real app, you'd delete from Firestore here
+        // For now, just show a message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Notification deleted'),
@@ -387,82 +429,6 @@ class _NotificationsCenterState extends State<NotificationsCenter> {
           ),
         ],
       ),
-    );
-  }
-
-  List<Map<String, dynamic>> _getFilteredNotifications() {
-    if (selectedTab == 'All') return notifications;
-    return notifications
-        .where(
-          (n) =>
-              n['type'].toString().toLowerCase() ==
-              selectedTab.toLowerCase().replaceAll('s', ''),
-        )
-        .toList();
-  }
-
-  int _getUnreadCount() {
-    return _getFilteredNotifications().where((n) => !n['isRead']).length;
-  }
-
-  void _markAllAsRead() {
-    setState(() {
-      for (var notification in notifications) {
-        notification['isRead'] = true;
-      }
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('All notifications marked as read'),
-        backgroundColor: Color(0xFFFFB347),
-      ),
-    );
-  }
-
-  void _clearAll() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF2C2C2C),
-          title: const Text(
-            'Clear All Notifications',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          content: const Text(
-            'Are you sure you want to clear all notifications?',
-            style: TextStyle(color: Colors.white),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                setState(() {
-                  notifications.clear();
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('All notifications cleared'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              },
-              child: const Text('Clear'),
-            ),
-          ],
-        );
-      },
     );
   }
 }

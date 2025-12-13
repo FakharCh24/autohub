@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../helper/db_helper.dart';
-import 'dart:convert';
+import '../../helper/firestore_helper.dart';
+import 'edit_listing_screen.dart';
 
 class MyListingsPage extends StatefulWidget {
   const MyListingsPage({super.key});
@@ -10,49 +10,12 @@ class MyListingsPage extends StatefulWidget {
 }
 
 class _MyListingsPageState extends State<MyListingsPage> {
-  List<Map<String, dynamic>> _cars = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCars();
-  }
-
-  Future<void> _loadCars() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final cars = await DbHelper.getInstance.getCars();
-      setState(() {
-        _cars = cars;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        _showErrorSnackBar('Error loading cars: $e');
-      }
-    }
-  }
+  final FirestoreHelper _firestoreHelper = FirestoreHelper.instance;
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
     );
-  }
-
-  List<String> _parseImages(String? imagesJson) {
-    if (imagesJson == null || imagesJson.isEmpty) return [];
-    try {
-      final decoded = jsonDecode(imagesJson);
-      if (decoded is List) return decoded.cast<String>();
-    } catch (_) {}
-    return [];
   }
 
   @override
@@ -75,31 +38,40 @@ class _MyListingsPageState extends State<MyListingsPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: _loadCars,
-          ),
-        ],
       ),
-      body: _isLoading
-          ? const Center(
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _firestoreHelper.getMyListings(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
               child: CircularProgressIndicator(color: Color(0xFFFFB347)),
-            )
-          : _cars.isEmpty
-          ? _buildEmptyState()
-          : RefreshIndicator(
-              color: const Color(0xFFFFB347),
-              backgroundColor: const Color(0xFF2C2C2C),
-              onRefresh: _loadCars,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _cars.length,
-                itemBuilder: (context, index) {
-                  return _buildCarCard(_cars[index]);
-                },
+            );
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white),
               ),
-            ),
+            );
+          }
+
+          final cars = snapshot.data ?? [];
+
+          if (cars.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: cars.length,
+            itemBuilder: (context, index) {
+              return _buildCarCard(cars[index]);
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -136,7 +108,7 @@ class _MyListingsPageState extends State<MyListingsPage> {
   }
 
   Widget _buildCarCard(Map<String, dynamic> car) {
-    final images = _parseImages(car[DbHelper.COLUMN_IMAGES]);
+    final images = List<String>.from(car['imageUrls'] ?? []);
     final hasImages = images.isNotEmpty;
 
     return Card(
@@ -164,10 +136,14 @@ class _MyListingsPageState extends State<MyListingsPage> {
                       topLeft: Radius.circular(12),
                       topRight: Radius.circular(12),
                     ),
-                    child: Image.asset(
+                    child: Image.network(
                       images[0],
                       width: double.infinity,
                       fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return _buildImagePlaceholder();
+                      },
                       errorBuilder: (context, error, stackTrace) {
                         return _buildImagePlaceholder();
                       },
@@ -189,7 +165,7 @@ class _MyListingsPageState extends State<MyListingsPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        car[DbHelper.COLUMN_TITLE] ?? 'Untitled',
+                        car['title'] ?? 'Untitled',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -208,7 +184,7 @@ class _MyListingsPageState extends State<MyListingsPage> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        'PKR ${_formatPrice(car[DbHelper.COLUMN_PRICE])}',
+                        'PKR ${_formatPrice(car['price'])}',
                         style: const TextStyle(
                           color: Color(0xFF1A1A1A),
                           fontSize: 16,
@@ -232,7 +208,7 @@ class _MyListingsPageState extends State<MyListingsPage> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    car[DbHelper.COLUMN_CATEGORY] ?? '',
+                    car['category'] ?? '',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 12,
@@ -248,22 +224,13 @@ class _MyListingsPageState extends State<MyListingsPage> {
                   spacing: 16,
                   runSpacing: 8,
                   children: [
-                    _buildSpecItem(
-                      Icons.calendar_today,
-                      '${car[DbHelper.COLUMN_YEAR]}',
-                    ),
+                    _buildSpecItem(Icons.calendar_today, '${car['year']}'),
                     _buildSpecItem(
                       Icons.speed,
-                      '${_formatNumber(car[DbHelper.COLUMN_MILEAGE])} km',
+                      '${_formatNumber(car['mileage'])} km',
                     ),
-                    _buildSpecItem(
-                      Icons.local_gas_station,
-                      car[DbHelper.COLUMN_FUEL] ?? '',
-                    ),
-                    _buildSpecItem(
-                      Icons.settings,
-                      car[DbHelper.COLUMN_TRANSMISSION] ?? '',
-                    ),
+                    _buildSpecItem(Icons.local_gas_station, car['fuel'] ?? ''),
+                    _buildSpecItem(Icons.settings, car['transmission'] ?? ''),
                   ],
                 ),
 
@@ -279,7 +246,7 @@ class _MyListingsPageState extends State<MyListingsPage> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      car[DbHelper.COLUMN_CONDITION] ?? '',
+                      car['condition'] ?? '',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.7),
                         fontSize: 14,
@@ -292,7 +259,7 @@ class _MyListingsPageState extends State<MyListingsPage> {
 
                 // Description
                 Text(
-                  car[DbHelper.COLUMN_DESC] ?? '',
+                  car['description'] ?? '',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -311,8 +278,8 @@ class _MyListingsPageState extends State<MyListingsPage> {
                         onPressed: () {
                           _showCarDetails(car);
                         },
-                        icon: const Icon(Icons.visibility),
-                        label: const Text('View Details'),
+                        icon: const Icon(Icons.visibility, size: 18),
+                        label: const Text('View'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFFFFB347),
                           side: const BorderSide(color: Color(0xFFFFB347)),
@@ -322,13 +289,30 @@ class _MyListingsPageState extends State<MyListingsPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          _confirmDelete(car[DbHelper.COLUMN_ID]);
+                          _editCar(car);
                         },
-                        icon: const Icon(Icons.delete),
+                        icon: const Icon(Icons.edit, size: 18),
+                        label: const Text('Edit'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFB347),
+                          foregroundColor: const Color(0xFF1A1A1A),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          _confirmDelete(car['id']);
+                        },
+                        icon: const Icon(Icons.delete, size: 18),
                         label: const Text('Delete'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.redAccent,
@@ -418,7 +402,7 @@ class _MyListingsPageState extends State<MyListingsPage> {
               ),
               const SizedBox(height: 20),
               Text(
-                car[DbHelper.COLUMN_TITLE] ?? 'Untitled',
+                car['title'] ?? 'Untitled',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -426,22 +410,13 @@ class _MyListingsPageState extends State<MyListingsPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildDetailRow(
-                'Price',
-                'PKR ${_formatPrice(car[DbHelper.COLUMN_PRICE])}',
-              ),
-              _buildDetailRow('Category', car[DbHelper.COLUMN_CATEGORY]),
-              _buildDetailRow('Year', '${car[DbHelper.COLUMN_YEAR]}'),
-              _buildDetailRow(
-                'Mileage',
-                '${_formatNumber(car[DbHelper.COLUMN_MILEAGE])} km',
-              ),
-              _buildDetailRow('Fuel Type', car[DbHelper.COLUMN_FUEL]),
-              _buildDetailRow(
-                'Transmission',
-                car[DbHelper.COLUMN_TRANSMISSION],
-              ),
-              _buildDetailRow('Condition', car[DbHelper.COLUMN_CONDITION]),
+              _buildDetailRow('Price', 'PKR ${_formatPrice(car['price'])}'),
+              _buildDetailRow('Category', car['category']),
+              _buildDetailRow('Year', '${car['year']}'),
+              _buildDetailRow('Mileage', '${_formatNumber(car['mileage'])} km'),
+              _buildDetailRow('Fuel Type', car['fuel']),
+              _buildDetailRow('Transmission', car['transmission']),
+              _buildDetailRow('Condition', car['condition']),
               const SizedBox(height: 16),
               const Text(
                 'Description',
@@ -453,7 +428,7 @@ class _MyListingsPageState extends State<MyListingsPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                car[DbHelper.COLUMN_DESC] ?? 'No description',
+                car['description'] ?? 'No description',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.8),
                   fontSize: 14,
@@ -498,7 +473,23 @@ class _MyListingsPageState extends State<MyListingsPage> {
     );
   }
 
-  void _confirmDelete(int? carId) {
+  Future<void> _editCar(Map<String, dynamic> car) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => EditListingScreen(carData: car)),
+    );
+
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Listing updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  void _confirmDelete(String? carId) {
     if (carId == null) return;
 
     showDialog(
@@ -541,23 +532,19 @@ class _MyListingsPageState extends State<MyListingsPage> {
     );
   }
 
-  Future<void> _deleteCar(int carId) async {
+  Future<void> _deleteCar(String carId) async {
     try {
-      final db = await DbHelper.getInstance.getDB();
-      await db.delete(
-        DbHelper.TABLE_CAR,
-        where: '${DbHelper.COLUMN_ID} = ?',
-        whereArgs: [carId],
-      );
+      final success = await _firestoreHelper.deleteCar(carId);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Car deleted successfully'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(
+              success ? 'Car deleted successfully' : 'Failed to delete car',
+            ),
+            backgroundColor: success ? Colors.green : Colors.red,
           ),
         );
-        _loadCars();
       }
     } catch (e) {
       if (mounted) {

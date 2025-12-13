@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:autohub/screens/home/car_detail_page.dart';
+import 'package:autohub/helper/firestore_helper.dart';
+import 'package:autohub/helper/chat_service.dart';
+import 'package:autohub/screens/chat/chat_conversation_page.dart';
+import 'package:intl/intl.dart';
 
 class SavedCarsPage extends StatefulWidget {
   const SavedCarsPage({super.key});
@@ -9,42 +13,17 @@ class SavedCarsPage extends StatefulWidget {
 }
 
 class _SavedCarsPageState extends State<SavedCarsPage> {
-  // Sample saved cars data
-  final List<Map<String, dynamic>> _savedCars = [
-    {
-      'name': 'BMW M3',
-      'year': '2022',
-      'price': 'Rs 2,10,00,000',
-      'mileage': '12,000 km',
-      'fuel': 'Petrol',
-      'transmission': 'Automatic',
-      'location': 'Lahore',
-      'savedDate': '2 days ago',
-      'image': 'assets/images/bmw.jpg',
-    },
-    {
-      'name': 'Mercedes-Benz C-Class',
-      'year': '2021',
-      'price': 'Rs 1,55,00,000',
-      'mileage': '25,000 km',
-      'fuel': 'Diesel',
-      'transmission': 'Automatic',
-      'location': 'Karachi',
-      'savedDate': '1 week ago',
-      'image': 'assets/images/merc.jpg',
-    },
-    {
-      'name': 'Ford Mustang',
-      'year': '2020',
-      'price': 'Rs 1,25,00,000',
-      'mileage': '35,000 km',
-      'fuel': 'Petrol',
-      'transmission': 'Manual',
-      'location': 'Islamabad',
-      'savedDate': '2 weeks ago',
-      'image': 'assets/images/ford.jpg',
-    },
-  ];
+  final FirestoreHelper _firestoreHelper = FirestoreHelper.instance;
+
+  String _formatPrice(dynamic price) {
+    final num priceNum = price is num ? price : 0;
+    return NumberFormat('#,##,###').format(priceNum);
+  }
+
+  String _formatMileage(dynamic mileage) {
+    final num mileageNum = mileage is num ? mileage : 0;
+    return '${NumberFormat('#,###').format(mileageNum)} km';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,15 +46,39 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
         ),
         centerTitle: true,
       ),
-      body: _savedCars.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _savedCars.length,
-              itemBuilder: (context, index) {
-                return _buildCarCard(_savedCars[index], index);
-              },
-            ),
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _firestoreHelper.getFavoriteCars(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFFFFB347)),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error loading favorites: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white),
+              ),
+            );
+          }
+
+          final savedCars = snapshot.data ?? [];
+
+          if (savedCars.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: savedCars.length,
+            itemBuilder: (context, index) {
+              return _buildCarCard(savedCars[index], index);
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -112,6 +115,10 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
   }
 
   Widget _buildCarCard(Map<String, dynamic> car, int index) {
+    final carId = car['id'] ?? '';
+    final List<String> imageUrls = List<String>.from(car['imageUrls'] ?? []);
+    final displayImage = imageUrls.isNotEmpty ? imageUrls[0] : '';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -129,24 +136,48 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
                   topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
                 ),
-                child: Image.asset(
-                  car['image'],
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: double.infinity,
-                      height: 200,
-                      color: const Color(0xFF1A1A1A),
-                      child: const Icon(
-                        Icons.car_rental,
-                        size: 60,
-                        color: Colors.white54,
+                child: displayImage.isNotEmpty
+                    ? Image.network(
+                        displayImage,
+                        width: double.infinity,
+                        height: 200,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            width: double.infinity,
+                            height: 200,
+                            color: const Color(0xFF1A1A1A),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFFFFB347),
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: double.infinity,
+                            height: 200,
+                            color: const Color(0xFF1A1A1A),
+                            child: const Icon(
+                              Icons.car_rental,
+                              size: 60,
+                              color: Colors.white54,
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
+                        width: double.infinity,
+                        height: 200,
+                        color: const Color(0xFF1A1A1A),
+                        child: const Icon(
+                          Icons.car_rental,
+                          size: 60,
+                          color: Colors.white54,
+                        ),
                       ),
-                    );
-                  },
-                ),
               ),
               Positioned(
                 top: 12,
@@ -158,7 +189,7 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
                   ),
                   child: IconButton(
                     onPressed: () {
-                      _removeFavorite(index);
+                      _removeFavorite(carId, car['title'] ?? 'this car');
                     },
                     icon: const Icon(
                       Icons.favorite,
@@ -169,30 +200,27 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
                 ),
               ),
               Positioned(
-                bottom: 12,
+                top: 12,
                 left: 12,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
+                    horizontal: 12,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A1A).withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.access_time,
-                        size: 14,
-                        color: Color(0xFFFFB347),
-                      ),
+                      const Icon(Icons.image, color: Colors.white, size: 14),
                       const SizedBox(width: 4),
                       Text(
-                        car['savedDate'],
+                        '${imageUrls.length}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -217,7 +245,7 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            car['name'],
+                            car['title'] ?? 'Unknown',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -226,7 +254,7 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            car['year'],
+                            car['year']?.toString() ?? 'N/A',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.6),
                               fontSize: 14,
@@ -245,7 +273,7 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        car['price'],
+                        'Rs ${_formatPrice(car['price'] ?? 0)}',
                         style: const TextStyle(
                           color: Color(0xFF1A1A1A),
                           fontSize: 16,
@@ -260,17 +288,29 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
                 // Specifications
                 Row(
                   children: [
-                    _buildSpecItem(Icons.speed, car['mileage']),
+                    _buildSpecItem(
+                      Icons.speed,
+                      _formatMileage(car['mileage'] ?? 0),
+                    ),
                     const SizedBox(width: 16),
-                    _buildSpecItem(Icons.local_gas_station, car['fuel']),
+                    _buildSpecItem(
+                      Icons.local_gas_station,
+                      car['fuel'] ?? 'N/A',
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _buildSpecItem(Icons.settings, car['transmission']),
+                    _buildSpecItem(
+                      Icons.settings,
+                      car['transmission'] ?? 'N/A',
+                    ),
                     const SizedBox(width: 16),
-                    _buildSpecItem(Icons.location_on, car['location']),
+                    _buildSpecItem(
+                      Icons.location_on,
+                      car['location'] ?? 'Pakistan',
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -334,8 +374,8 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
     );
   }
 
-  void _removeFavorite(int index) {
-    showDialog(
+  Future<void> _removeFavorite(String carId, String carName) async {
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -345,12 +385,12 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
           content: Text(
-            'Remove ${_savedCars[index]['name']} from saved cars?',
+            'Remove $carName from saved cars?',
             style: const TextStyle(color: Colors.white),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(context, false),
               child: const Text(
                 'Cancel',
                 style: TextStyle(color: Colors.white),
@@ -361,42 +401,60 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () {
-                setState(() {
-                  _savedCars.removeAt(index);
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Removed from saved cars'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              },
+              onPressed: () => Navigator.pop(context, true),
               child: const Text('Remove'),
             ),
           ],
         );
       },
     );
+
+    if (confirm == true) {
+      try {
+        await _firestoreHelper.removeFromFavorites(carId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Removed from saved cars'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error removing car: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   void _viewCarDetails(Map<String, dynamic> car) {
+    final List<String> imageUrls = List<String>.from(car['imageUrls'] ?? []);
+    final displayImage = imageUrls.isNotEmpty ? imageUrls[0] : '';
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CarDetailPage(
-          carName: '${car['year']} ${car['name']}',
-          price: car['price'],
-          location: car['location'],
-          image: car['image'],
-          specs: '${car['mileage']} • ${car['fuel']} • ${car['transmission']}',
+          carName: car['title'] ?? 'Unknown',
+          price: 'Rs ${_formatPrice(car['price'] ?? 0)}',
+          location: car['location'] ?? 'Pakistan',
+          image: displayImage,
+          specs:
+              '${_formatMileage(car['mileage'] ?? 0)} • ${car['fuel']} • ${car['transmission']}',
+          carId: car['id'],
+          sellerId: car['userId'],
         ),
       ),
     );
   }
 
-  void _contactSeller(Map<String, dynamic> car) {
+  Future<void> _contactSeller(Map<String, dynamic> car) async {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -439,14 +497,92 @@ class _SavedCarsPageState extends State<SavedCarsPage> {
                   'Message',
                   style: TextStyle(color: Colors.white),
                 ),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Opening messages...'),
-                      backgroundColor: Color(0xFFFFB347),
+
+                  final sellerId = car['userId'];
+                  final carId = car['id'];
+
+                  if (sellerId == null || carId == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Unable to contact seller'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  // Show loading
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFFFB347),
+                      ),
                     ),
                   );
+
+                  try {
+                    final chatService = ChatService.instance;
+                    final currentUserId = chatService.currentUserId;
+
+                    if (currentUserId == null) {
+                      if (mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please sign in to chat'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                      return;
+                    }
+
+                    final chatId = await chatService.createOrGetChatRoom(
+                      sellerId: sellerId,
+                      buyerId: currentUserId,
+                      carId: carId,
+                      carTitle: car['title'] ?? 'Car',
+                    );
+
+                    if (chatId == null) {
+                      throw Exception('Failed to create chat');
+                    }
+
+                    final sellerDoc = await _firestoreHelper.getUserProfile(
+                      sellerId,
+                    );
+                    final sellerName = sellerDoc?['name'] ?? 'Seller';
+
+                    if (mounted) {
+                      Navigator.pop(context); // Close loading
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatConversationPage(
+                            chatId: chatId,
+                            otherUserId: sellerId,
+                            otherUserName: sellerName,
+                            carTitle: car['title'] ?? 'Car',
+                          ),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
                 },
               ),
               ListTile(

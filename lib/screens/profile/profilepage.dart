@@ -2,6 +2,7 @@ import 'package:autohub/screens/auth/Login.dart';
 import 'package:autohub/screens/home/browse/recently_viewed.dart';
 import 'package:autohub/screens/notifications/notifications_center.dart';
 import 'package:autohub/screens/sell/my_listings_page.dart';
+import 'package:autohub/screens/alerts/my_alerts_page.dart';
 import 'package:autohub/screens/settings/about_autohub_page.dart';
 import 'package:autohub/screens/settings/help_center_page.dart';
 import 'package:autohub/screens/settings/language_selection_page.dart';
@@ -9,6 +10,7 @@ import 'package:autohub/screens/settings/privacy_security_page.dart';
 import 'package:autohub/screens/settings/send_feedback_page.dart';
 import 'package:autohub/screens/settings/terms_conditions_page.dart';
 import 'package:autohub/helper/auth_service.dart';
+import 'package:autohub/helper/firestore_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'edit_profile_page.dart';
@@ -26,6 +28,45 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isDarkMode = true;
   bool notificationsEnabled = true;
   bool locationEnabled = false;
+
+  final AuthService _authService = AuthService();
+  final FirestoreHelper _firestoreHelper = FirestoreHelper.instance;
+
+  Map<String, dynamic>? _userProfile;
+  Map<String, dynamic>? _userStats;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+    _loadUserStats();
+  }
+
+  Future<void> _loadUserProfile() async {
+    final userId = _authService.currentUser?.uid;
+    if (userId != null) {
+      final profile = await _firestoreHelper.getUserProfile(userId);
+      setState(() {
+        _userProfile = profile;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadUserStats() async {
+    final userId = _authService.currentUser?.uid;
+    if (userId != null) {
+      final stats = await _firestoreHelper.getUserStats(userId);
+      setState(() {
+        _userStats = stats;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,278 +104,330 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Profile Header
-            Container(
-              padding: const EdgeInsets.all(20),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFFFB347)),
+            )
+          : SingleChildScrollView(
               child: Column(
                 children: [
-                  Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundColor: const Color(0xFF2C2C2C),
-                        backgroundImage: const AssetImage(
-                          'assets/images/Profile.jpg',
+                  // Profile Header
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 50,
+                              backgroundColor: const Color(0xFF2C2C2C),
+                              backgroundImage:
+                                  _userProfile?['photoUrl'] != null &&
+                                      _userProfile!['photoUrl'].isNotEmpty
+                                  ? NetworkImage(_userProfile!['photoUrl'])
+                                  : const AssetImage(
+                                          'assets/images/Profile.jpg',
+                                        )
+                                        as ImageProvider,
+                              onBackgroundImageError:
+                                  (exception, stackTrace) {},
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFFB347),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: IconButton(
+                                  onPressed: () {},
+                                  icon: const Icon(
+                                    Icons.camera_alt,
+                                    color: Color(0xFF1A1A1A),
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        onBackgroundImageError: (exception, stackTrace) {},
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFFB347),
-                            shape: BoxShape.circle,
+                        const SizedBox(height: 16),
+                        Text(
+                          _userProfile?['name'] ?? 'User',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
                           ),
-                          child: IconButton(
-                            onPressed: () {},
-                            icon: const Icon(
-                              Icons.camera_alt,
-                              color: Color(0xFF1A1A1A),
-                              size: 20,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _userProfile?['email'] ??
+                              _authService.currentUser?.email ??
+                              '',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (_userProfile?['isVerifiedSeller'] == true)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFB347).withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFFFB347),
+                              ),
+                            ),
+                            child: const Text(
+                              'Verified Seller',
+                              style: TextStyle(
+                                color: Color(0xFFFFB347),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
+                      ],
+                    ),
+                  ),
+
+                  // Stats Cards
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            'Cars Listed',
+                            '${_userStats?['carsListed'] ?? 0}',
+                            Icons.car_rental,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            'Cars Sold',
+                            '${_userStats?['carsSold'] ?? 0}',
+                            Icons.check_circle,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            'Reviews',
+                            _userStats?['averageRating'] != null
+                                ? (_userStats!['averageRating'] as double)
+                                      .toStringAsFixed(1)
+                                : '0.0',
+                            Icons.star,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Menu Options
+                  _buildMenuSection('Account', [
+                    _buildMenuItem(Icons.person_outline, 'Edit Profile', () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfilePage(),
+                        ),
+                      ).then((_) {
+                        // Reload profile when returning from edit page
+                        _loadUserProfile();
+                        _loadUserStats();
+                      });
+                    }),
+                    _buildMenuItem(Icons.car_rental, 'My Listings', () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MyListingsPage(),
+                        ),
+                      );
+                    }),
+                    _buildMenuItem(Icons.favorite_outline, 'Saved Cars', () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SavedCarsPage(),
+                        ),
+                      );
+                    }),
+                    _buildMenuItem(Icons.history, 'Purchase History', () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PurchaseHistoryPage(),
+                        ),
+                      );
+                    }),
+                    _buildMenuItem(
+                      Icons.visibility_outlined,
+                      'Recently Viewed',
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RecentlyViewed(),
+                          ),
+                        );
+                      },
+                    ),
+                  ]),
+
+                  _buildMenuSection('Settings', [
+                    _buildMenuItem(
+                      Icons.notifications_active_outlined,
+                      'My Price Alerts',
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const MyAlertsPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildMenuItem(
+                      Icons.notifications_none_outlined,
+                      'Notifications',
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const NotificationsCenter(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildMenuItem(
+                      Icons.location_on_outlined,
+                      'Location Services',
+                      () {},
+                      trailing: Switch(
+                        value: locationEnabled,
+                        onChanged: (value) {
+                          setState(() {
+                            locationEnabled = value;
+                          });
+                        },
+                        activeColor: const Color(0xFFFFB347),
+                      ),
+                    ),
+                    _buildMenuItem(Icons.security, 'Privacy & Security', () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PrivacySecurityPage(),
+                        ),
+                      );
+                    }),
+                    _buildMenuItem(Icons.language, 'Language', () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LanguageSelectionPage(),
+                        ),
+                      );
+                    }),
+                  ]),
+
+                  _buildMenuSection('Support', [
+                    _buildMenuItem(Icons.help_outline, 'Help Center', () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HelpCenterPage(),
+                        ),
+                      );
+                    }),
+                    _buildMenuItem(
+                      Icons.feedback_outlined,
+                      'Send Feedback',
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SendFeedbackPage(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildMenuItem(Icons.info_outline, 'About AutoHub', () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AboutAutoHubPage(),
+                        ),
+                      );
+                    }),
+                    _buildMenuItem(
+                      Icons.description_outlined,
+                      'Terms & Conditions',
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TermsConditionsPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ]),
+
+                  const SizedBox(height: 24),
+
+                  // Logout Button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          _showLogoutDialog();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.logout, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text(
+                              'Logout',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Fakhir Ashraf',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'fch9629652@gmail.com',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFB347).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFFFB347)),
-                    ),
-                    child: const Text(
-                      'Verified Seller',
-                      style: TextStyle(
-                        color: Color(0xFFFFB347),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
-
-            // Stats Cards
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      'Cars Listed',
-                      '12',
-                      Icons.car_rental,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard('Cars Sold', '8', Icons.check_circle),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildStatCard('Reviews', '4.8', Icons.star)),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Menu Options
-            _buildMenuSection('Account', [
-              _buildMenuItem(Icons.person_outline, 'Edit Profile', () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const EditProfilePage(),
-                  ),
-                );
-              }),
-              _buildMenuItem(Icons.car_rental, 'My Listings', () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const MyListingsPage(),
-                  ),
-                );
-              }),
-              _buildMenuItem(Icons.favorite_outline, 'Saved Cars', () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SavedCarsPage(),
-                  ),
-                );
-              }),
-              _buildMenuItem(Icons.history, 'Purchase History', () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PurchaseHistoryPage(),
-                  ),
-                );
-              }),
-              _buildMenuItem(Icons.visibility_outlined, 'Recently Viewed', () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const RecentlyViewed(),
-                  ),
-                );
-              }),
-            ]),
-
-            _buildMenuSection('Settings', [
-              _buildMenuItem(
-                Icons.notifications_none_outlined,
-                'Notifications',
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const NotificationsCenter(),
-                    ),
-                  );
-                },
-              ),
-              _buildMenuItem(
-                Icons.location_on_outlined,
-                'Location Services',
-                () {},
-                trailing: Switch(
-                  value: locationEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      locationEnabled = value;
-                    });
-                  },
-                  activeColor: const Color(0xFFFFB347),
-                ),
-              ),
-              _buildMenuItem(Icons.security, 'Privacy & Security', () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PrivacySecurityPage(),
-                  ),
-                );
-              }),
-              _buildMenuItem(Icons.language, 'Language', () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const LanguageSelectionPage(),
-                  ),
-                );
-              }),
-            ]),
-
-            _buildMenuSection('Support', [
-              _buildMenuItem(Icons.help_outline, 'Help Center', () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const HelpCenterPage(),
-                  ),
-                );
-              }),
-              _buildMenuItem(Icons.feedback_outlined, 'Send Feedback', () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SendFeedbackPage(),
-                  ),
-                );
-              }),
-              _buildMenuItem(Icons.info_outline, 'About AutoHub', () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AboutAutoHubPage(),
-                  ),
-                );
-              }),
-              _buildMenuItem(
-                Icons.description_outlined,
-                'Terms & Conditions',
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TermsConditionsPage(),
-                    ),
-                  );
-                },
-              ),
-            ]),
-
-            const SizedBox(height: 24),
-
-            // Logout Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton(
-                  onPressed: () {
-                    _showLogoutDialog();
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.logout, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text(
-                        'Logout',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
     );
   }
 

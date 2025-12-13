@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:autohub/screens/chat/chat_media_gallery.dart';
 import 'package:autohub/screens/chat/chat_settings.dart';
+import 'package:autohub/helper/chat_service.dart';
 
 class ChatConversationPage extends StatefulWidget {
-  final String conversationName;
-  final String avatar;
+  final String chatId;
+  final String otherUserId;
+  final String otherUserName;
   final String carTitle;
-  final bool isOnline;
 
   const ChatConversationPage({
     super.key,
-    required this.conversationName,
-    required this.avatar,
+    required this.chatId,
+    required this.otherUserId,
+    required this.otherUserName,
     required this.carTitle,
-    required this.isOnline,
   });
 
   @override
@@ -22,11 +23,45 @@ class ChatConversationPage extends StatefulWidget {
 
 class _ChatConversationPageState extends State<ChatConversationPage> {
   final TextEditingController _messageController = TextEditingController();
+  final ChatService _chatService = ChatService.instance;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void dispose() {
     _messageController.dispose();
+    _scrollController.dispose();
+    _chatService.setTyping(widget.chatId, false);
     super.dispose();
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+
+    _messageController.clear();
+    _chatService.setTyping(widget.chatId, false);
+
+    try {
+      await _chatService.sendMessage(chatId: widget.chatId, message: text);
+
+      // Scroll to bottom after sending
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error sending message: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -47,7 +82,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             CircleAvatar(
               backgroundColor: const Color(0xFFFFB347),
               child: Text(
-                widget.avatar,
+                widget.otherUserName.isNotEmpty
+                    ? widget.otherUserName[0].toUpperCase()
+                    : '?',
                 style: const TextStyle(
                   color: Color(0xFF1A1A1A),
                   fontWeight: FontWeight.bold,
@@ -60,21 +97,43 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.conversationName,
+                    widget.otherUserName,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
-                  Text(
-                    widget.isOnline ? 'Online' : 'Offline',
-                    style: TextStyle(
-                      color: widget.isOnline
-                          ? Colors.green.withOpacity(0.8)
-                          : Colors.grey.withOpacity(0.8),
-                      fontSize: 12,
+                  StreamBuilder<bool>(
+                    stream: _chatService.getUserOnlineStatus(
+                      widget.otherUserId,
                     ),
+                    builder: (context, snapshot) {
+                      final isOnline = snapshot.data ?? false;
+                      return StreamBuilder<bool>(
+                        stream: _chatService.getTypingStatus(
+                          widget.chatId,
+                          widget.otherUserId,
+                        ),
+                        builder: (context, typingSnapshot) {
+                          final isTyping = typingSnapshot.data ?? false;
+                          return Text(
+                            isTyping
+                                ? 'typing...'
+                                : (isOnline ? 'Online' : 'Offline'),
+                            style: TextStyle(
+                              color: isTyping || isOnline
+                                  ? Colors.green.withOpacity(0.8)
+                                  : Colors.grey.withOpacity(0.8),
+                              fontSize: 12,
+                              fontStyle: isTyping
+                                  ? FontStyle.italic
+                                  : FontStyle.normal,
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ],
               ),
@@ -87,9 +146,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ChatMediaGallery(
-                    conversationName: widget.conversationName,
-                  ),
+                  builder: (context) =>
+                      ChatMediaGallery(conversationName: widget.otherUserName),
                 ),
               );
             },
@@ -105,7 +163,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   context,
                   MaterialPageRoute(
                     builder: (context) =>
-                        ChatSettings(conversationName: widget.conversationName),
+                        ChatSettings(conversationName: widget.otherUserName),
                   ),
                 );
               } else if (value == 'media') {
@@ -113,7 +171,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => ChatMediaGallery(
-                      conversationName: widget.conversationName,
+                      conversationName: widget.otherUserName,
                     ),
                   ),
                 );
@@ -184,35 +242,126 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
           // Messages Area
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildMessage(
-                  'Hi! Is the ${widget.carTitle} still available?',
-                  false,
-                  '2:15 PM',
-                ),
-                _buildMessage(
-                  'Yes, it is! Would you like to schedule a viewing?',
-                  true,
-                  '2:16 PM',
-                ),
-                _buildMessage(
-                  'That would be great! What times work for you?',
-                  false,
-                  '2:18 PM',
-                ),
-                _buildMessage(
-                  'I\'m free this weekend. Saturday or Sunday work?',
-                  true,
-                  '2:20 PM',
-                ),
-                _buildMessage(
-                  'Saturday afternoon works perfectly!',
-                  false,
-                  '2:30 PM',
-                ),
-              ],
+            child: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _chatService.getMessages(widget.chatId),
+              builder: (context, snapshot) {
+                // Show loading only for initial connection
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: Color(0xFFFFB347)),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            color: Colors.red,
+                            size: 60,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Error loading messages',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${snapshot.error}',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.7),
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                final messages = snapshot.data ?? [];
+
+                if (messages.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 60,
+                          color: Colors.white.withOpacity(0.3),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No messages yet',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.5),
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Start the conversation!',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.3),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    final isSentByMe =
+                        message['senderId'] == _chatService.currentUserId;
+
+                    // Handle timestamp conversion from Firebase (milliseconds)
+                    String timeText = '';
+                    final timestampValue = message['timestamp'];
+                    if (timestampValue != null) {
+                      try {
+                        DateTime timestamp;
+                        if (timestampValue is int) {
+                          timestamp = DateTime.fromMillisecondsSinceEpoch(
+                            timestampValue,
+                          );
+                        } else if (timestampValue is DateTime) {
+                          timestamp = timestampValue;
+                        } else {
+                          timestamp = DateTime.now();
+                        }
+                        timeText =
+                            '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+                      } catch (e) {
+                        timeText = '';
+                      }
+                    }
+
+                    return _buildMessage(
+                      message['message'] ?? '',
+                      isSentByMe,
+                      timeText,
+                      imageUrl: message['imageUrl'],
+                    );
+                  },
+                );
+              },
             ),
           ),
 
@@ -237,6 +386,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   child: TextField(
                     controller: _messageController,
                     style: const TextStyle(color: Colors.white),
+                    onChanged: (text) {
+                      // Set typing indicator
+                      _chatService.setTyping(widget.chatId, text.isNotEmpty);
+                    },
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
                       hintStyle: TextStyle(
@@ -262,12 +415,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    onPressed: () {
-                      if (_messageController.text.isNotEmpty) {
-                        // TODO: Send message
-                        _messageController.clear();
-                      }
-                    },
+                    onPressed: _sendMessage,
                     icon: const Icon(Icons.send, color: Color(0xFF1A1A1A)),
                   ),
                 ),
@@ -279,7 +427,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     );
   }
 
-  Widget _buildMessage(String message, bool isMe, String time) {
+  Widget _buildMessage(
+    String message,
+    bool isMe,
+    String time, {
+    String? imageUrl,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -298,13 +451,49 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    message,
-                    style: TextStyle(
-                      color: isMe ? const Color(0xFF1A1A1A) : Colors.white,
-                      fontSize: 14,
+                  if (imageUrl != null && imageUrl.isNotEmpty) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        imageUrl,
+                        width: 200,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            width: 200,
+                            height: 150,
+                            color: Colors.grey.withOpacity(0.3),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFFFFB347),
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 200,
+                            height: 150,
+                            color: Colors.grey.withOpacity(0.3),
+                            child: const Icon(
+                              Icons.broken_image,
+                              color: Colors.white54,
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
+                    if (message.isNotEmpty) const SizedBox(height: 8),
+                  ],
+                  if (message.isNotEmpty)
+                    Text(
+                      message,
+                      style: TextStyle(
+                        color: isMe ? const Color(0xFF1A1A1A) : Colors.white,
+                        fontSize: 14,
+                      ),
+                    ),
                   const SizedBox(height: 4),
                   Text(
                     time,

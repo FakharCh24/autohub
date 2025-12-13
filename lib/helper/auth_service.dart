@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:autohub/helper/firestore_helper.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirestoreHelper _firestoreHelper = FirestoreHelper.instance;
 
   // Get current user
   User? get currentUser => _auth.currentUser;
@@ -20,6 +22,14 @@ class AuthService {
             email: email.trim(),
             password: password,
           );
+
+      // Create user profile in Firestore
+      if (userCredential.user != null) {
+        await _firestoreHelper.createUserProfile(
+          userId: userCredential.user!.uid,
+          email: userCredential.user!.email ?? email,
+        );
+      }
 
       return {
         'success': true,

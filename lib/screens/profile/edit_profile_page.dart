@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import '../../helper/firestore_helper.dart';
+import '../../helper/storage_helper.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -16,6 +21,128 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _bioController = TextEditingController(
     text: 'Car enthusiast and verified seller.',
   );
+
+  final ImagePicker _picker = ImagePicker();
+  File? _selectedImage;
+  String? _currentPhotoUrl;
+  bool _isLoading = false;
+  bool _isUploadingImage = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      print('Loading user profile...');
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+
+      if (userId == null) {
+        print('No user logged in');
+        return;
+      }
+
+      print('User ID: $userId');
+      final userProfile = await FirestoreHelper.instance.getUserProfile(userId);
+      print('Profile loaded: ${userProfile != null}');
+
+      if (userProfile != null && mounted) {
+        setState(() {
+          _nameController.text = userProfile['name'] ?? '';
+          _emailController.text = userProfile['email'] ?? '';
+          _phoneController.text = userProfile['phone'] ?? '';
+          _locationController.text = userProfile['address'] ?? '';
+          _bioController.text = userProfile['bio'] ?? '';
+          _currentPhotoUrl = userProfile['photoUrl'];
+        });
+        print('Profile UI updated');
+      }
+    } catch (e) {
+      print('Error loading user profile: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading profile: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+          _isUploadingImage = true;
+        });
+
+        // Upload to Firebase Storage
+        final userId = FirebaseAuth.instance.currentUser?.uid;
+        if (userId != null) {
+          final imageUrl = await StorageHelper.instance.uploadProfilePicture(
+            _selectedImage!,
+          );
+
+          if (imageUrl != null) {
+            // Update Firestore user profile
+            await FirestoreHelper.instance.updateUserProfile(
+              userId: userId,
+              photoUrl: imageUrl,
+            );
+
+            if (mounted) {
+              setState(() {
+                _currentPhotoUrl = imageUrl;
+                _isUploadingImage = false;
+              });
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Profile picture updated successfully'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          } else {
+            if (mounted) {
+              setState(() {
+                _isUploadingImage = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Failed to upload image'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isUploadingImage = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -58,19 +185,39 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 // Profile Picture Section
                 Stack(
                   children: [
-                    CircleAvatar(
-                      radius: 60,
-                      backgroundColor: const Color(0xFF2C2C2C),
-                      backgroundImage: const AssetImage(
-                        'assets/images/Profile.jpg',
-                      ),
-                      onBackgroundImageError: (exception, stackTrace) {},
-                      child: const Icon(
-                        Icons.person,
-                        size: 60,
-                        color: Colors.white54,
-                      ),
-                    ),
+                    _isUploadingImage
+                        ? const CircleAvatar(
+                            radius: 60,
+                            backgroundColor: Color(0xFF2C2C2C),
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFFFFB347),
+                              ),
+                            ),
+                          )
+                        : CircleAvatar(
+                            radius: 60,
+                            backgroundColor: const Color(0xFF2C2C2C),
+                            backgroundImage: _selectedImage != null
+                                ? FileImage(_selectedImage!)
+                                : (_currentPhotoUrl != null &&
+                                          _currentPhotoUrl!.isNotEmpty
+                                      ? NetworkImage(_currentPhotoUrl!)
+                                      : const AssetImage(
+                                              'assets/images/Profile.jpg',
+                                            )
+                                            as ImageProvider),
+                            child:
+                                (_selectedImage == null &&
+                                    (_currentPhotoUrl == null ||
+                                        _currentPhotoUrl!.isEmpty))
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 60,
+                                    color: Colors.white54,
+                                  )
+                                : null,
+                          ),
                     Positioned(
                       bottom: 0,
                       right: 0,
@@ -173,25 +320,38 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        _saveProfile();
-                      }
-                    },
+                    onPressed: _isLoading
+                        ? null
+                        : () {
+                            if (_formKey.currentState!.validate()) {
+                              _saveProfile();
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFB347),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'Save Changes',
-                      style: TextStyle(
-                        color: Color(0xFF1A1A1A),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFF1A1A1A),
+                              ),
+                            ),
+                          )
+                        : const Text(
+                            'Save Changes',
+                            style: TextStyle(
+                              color: Color(0xFF1A1A1A),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -293,13 +453,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  // Implement camera functionality
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Camera feature coming soon'),
-                      backgroundColor: Color(0xFFFFB347),
-                    ),
-                  );
+                  _pickImage(ImageSource.camera);
                 },
               ),
               ListTile(
@@ -313,13 +467,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  // Implement gallery functionality
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Gallery feature coming soon'),
-                      backgroundColor: Color(0xFFFFB347),
-                    ),
-                  );
+                  _pickImage(ImageSource.gallery);
                 },
               ),
             ],
@@ -446,14 +594,63 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  void _saveProfile() {
-    // Implement save functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Profile updated successfully'),
-        backgroundColor: Color(0xFFFFB347),
-      ),
-    );
-    Navigator.pop(context);
+  Future<void> _saveProfile() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User not logged in'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Update user profile in Firestore
+      final success = await FirestoreHelper.instance.updateUserProfile(
+        userId: userId,
+        name: _nameController.text.trim(),
+        phone: _phoneController.text.trim(),
+        address: _locationController.text.trim(),
+        bio: _bioController.text.trim(),
+      );
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile updated successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to update profile'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }

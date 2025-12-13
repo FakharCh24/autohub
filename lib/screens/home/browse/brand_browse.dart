@@ -1,19 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../helper/firestore_helper.dart';
 
 class BrandBrowse extends StatelessWidget {
   const BrandBrowse({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> brands = [
-      {'name': 'BMW', 'count': 87, 'logo': 'assets/images/bmw.jpg'},
-      {'name': 'Mercedes-Benz', 'count': 95, 'logo': 'assets/images/merc.jpg'},
-      {'name': 'Ford', 'count': 124, 'logo': 'assets/images/ford.jpg'},
-      {'name': 'Toyota', 'count': 156, 'logo': 'assets/images/car1.jpg'},
-      {'name': 'Honda', 'count': 132, 'logo': 'assets/images/car2.jpg'},
-      {'name': 'Nissan', 'count': 98, 'logo': 'assets/images/car3.jpg'},
-    ];
-
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A1A),
       appBar: AppBar(
@@ -39,11 +31,72 @@ class BrandBrowse extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: brands.length,
-        itemBuilder: (context, index) {
-          return _buildBrandCard(context, brands[index]);
+      body: FutureBuilder<Map<String, int>>(
+        future: FirestoreHelper.instance.getBrandCounts(),
+        builder: (context, snapshot) {
+          // Loading state
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFB347)),
+              ),
+            );
+          }
+
+          // Error state
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error loading brands: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white),
+              ),
+            );
+          }
+
+          // Get brand counts
+          final brandCounts = snapshot.data ?? {};
+
+          // Map brand names to logos
+          final brandLogos = {
+            'BMW': 'assets/images/bmw.jpg',
+            'Mercedes-Benz': 'assets/images/merc.jpg',
+            'Ford': 'assets/images/ford.jpg',
+            'Toyota': 'assets/images/car1.jpg',
+            'Honda': 'assets/images/car2.jpg',
+            'Nissan': 'assets/images/car3.jpg',
+          };
+
+          // Convert to list and sort by count
+          final brands =
+              brandCounts.entries
+                  .map(
+                    (entry) => {
+                      'name': entry.key,
+                      'count': entry.value,
+                      'logo': brandLogos[entry.key] ?? 'assets/images/car1.jpg',
+                    },
+                  )
+                  .toList()
+                ..sort(
+                  (a, b) => (b['count'] as int).compareTo(a['count'] as int),
+                );
+
+          if (brands.isEmpty) {
+            return const Center(
+              child: Text(
+                'No brands available',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: brands.length,
+            itemBuilder: (context, index) {
+              return _buildBrandCard(context, brands[index]);
+            },
+          );
         },
       ),
     );

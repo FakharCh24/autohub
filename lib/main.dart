@@ -1,5 +1,5 @@
 import 'package:autohub/screens/onboarding/splash.dart';
-import 'package:autohub/screens/home/homeScreen.dart';
+import 'package:autohub/screens/home/navbar.dart';
 import 'package:autohub/helper/auth_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -27,9 +27,12 @@ class AuthWrapper extends StatelessWidget {
 
   AuthWrapper({super.key});
 
-  Future<bool> _checkLoginStatus() async {
+  Future<Map<String, bool>> _checkStatus() async {
     var sharedPrefs = await SharedPreferences.getInstance();
-    return sharedPrefs.getBool("Login") ?? false;
+    return {
+      'isFirstLaunch': sharedPrefs.getBool('isFirstLaunch') ?? true,
+      'isLoggedIn': sharedPrefs.getBool("Login") ?? false,
+    };
   }
 
   @override
@@ -49,8 +52,8 @@ class AuthWrapper extends StatelessWidget {
 
         // Check if user is logged in with Firebase
         if (snapshot.hasData && snapshot.data != null) {
-          return FutureBuilder<bool>(
-            future: _checkLoginStatus(),
+          return FutureBuilder<Map<String, bool>>(
+            future: _checkStatus(),
             builder: (context, prefs) {
               if (prefs.connectionState == ConnectionState.waiting) {
                 return const Scaffold(
@@ -61,10 +64,10 @@ class AuthWrapper extends StatelessWidget {
                 );
               }
               // If logged in, go to home screen
-              if (prefs.data == true) {
-                return const HomeScreen();
+              if (prefs.data?['isLoggedIn'] == true) {
+                return const Navbar();
               }
-              // Otherwise show splash/onboarding
+              // Otherwise show splash/onboarding (only on first launch)
               return Splash();
             },
           );

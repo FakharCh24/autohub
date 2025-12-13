@@ -2,6 +2,7 @@ import 'package:autohub/screens/home/browse/compare_cars.dart';
 import 'package:autohub/screens/home/car_detail_page.dart';
 import 'package:autohub/screens/home/filter/advanced_filter_screen.dart';
 import 'package:autohub/screens/home/search_result_page.dart';
+import 'package:autohub/helper/firestore_helper.dart';
 import 'package:flutter/material.dart';
 
 class SearchPage extends StatefulWidget {
@@ -13,6 +14,7 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
+  final FirestoreHelper _firestoreHelper = FirestoreHelper.instance;
   String selectedCategory = 'All';
   RangeValues priceRange = const RangeValues(0, 10000000);
   String selectedFuel = 'All';
@@ -196,13 +198,46 @@ class _SearchPageState extends State<SearchPage> {
 
             // const SizedBox(height: 20),
 
-            // Search Results
+            // Search Results - Show all cars from Firestore
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: 10,
-                itemBuilder: (context, index) {
-                  return _buildSearchResultCard(index);
+              child: StreamBuilder<List<Map<String, dynamic>>>(
+                stream: _firestoreHelper.getAllCars(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFFFB347),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error: ${snapshot.error}',
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    );
+                  }
+
+                  final cars = snapshot.data ?? [];
+
+                  if (cars.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No cars available',
+                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: cars.length,
+                    itemBuilder: (context, index) {
+                      return _buildSearchResultCard(cars[index]);
+                    },
+                  );
                 },
               ),
             ),
@@ -241,38 +276,22 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Widget _buildSearchResultCard(int index) {
-    List<Map<String, dynamic>> sampleCars = [
-      {
-        'name': 'BMW X5 2023',
-        'price': 'Rs 12,500,000',
-        'location': 'Karachi, Pakistan',
-        'year': '2023',
-        'fuel': 'Petrol',
-        'mileage': '15,000 km',
-        'image': 'assets/images/bmw.jpg',
-      },
-      {
-        'name': 'Mercedes C-Class',
-        'price': 'Rs 8,750,000',
-        'location': 'Lahore, Pakistan',
-        'year': '2022',
-        'fuel': 'Hybrid',
-        'mileage': '22,000 km',
-        'image': 'assets/images/merc.jpg',
-      },
-      {
-        'name': 'Ford Mustang GT',
-        'price': 'Rs 15,200,000',
-        'location': 'Islamabad, Pakistan',
-        'year': '2024',
-        'fuel': 'Petrol',
-        'mileage': '8,500 km',
-        'image': 'assets/images/ford.jpg',
-      },
-    ];
+  Widget _buildSearchResultCard(Map<String, dynamic> carData) {
+    // Extract data from Firestore document
+    final imageUrl = (carData['imageUrls'] as List?)?.isNotEmpty == true
+        ? carData['imageUrls'][0]
+        : 'assets/images/car1.jpg';
 
-    var car = sampleCars[index % sampleCars.length];
+    var car = {
+      'id': carData['id'],
+      'name': carData['title'] ?? 'Unknown Car',
+      'price': 'Rs ${carData['price'] ?? 0}',
+      'location': carData['location'] ?? 'Unknown',
+      'year': '${carData['year'] ?? 'N/A'}',
+      'fuel': carData['fuel'] ?? 'N/A',
+      'mileage': '${carData['mileage'] ?? 0} km',
+      'image': imageUrl,
+    };
 
     return GestureDetector(
       onTap: () {
@@ -285,6 +304,8 @@ class _SearchPageState extends State<SearchPage> {
               location: car['location'],
               image: car['image'],
               specs: '${car['fuel']} • ${car['year']} • ${car['mileage']}',
+              carId: carData['id'],
+              sellerId: carData['userId'],
             ),
           ),
         );
@@ -302,20 +323,41 @@ class _SearchPageState extends State<SearchPage> {
               borderRadius: const BorderRadius.horizontal(
                 left: Radius.circular(12),
               ),
-              child: Image.asset(
-                car['image'],
-                width: 120,
-                height: 120,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 120,
-                    height: 100,
-                    color: Colors.grey.withOpacity(0.3),
-                    child: const Icon(Icons.car_rental, color: Colors.white54),
-                  );
-                },
-              ),
+              child: car['image'].startsWith('http')
+                  ? Image.network(
+                      car['image'],
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 120,
+                          height: 120,
+                          color: Colors.grey.withOpacity(0.3),
+                          child: const Icon(
+                            Icons.car_rental,
+                            color: Colors.white54,
+                          ),
+                        );
+                      },
+                    )
+                  : Image.asset(
+                      car['image'],
+                      width: 120,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 120,
+                          height: 120,
+                          color: Colors.grey.withOpacity(0.3),
+                          child: const Icon(
+                            Icons.car_rental,
+                            color: Colors.white54,
+                          ),
+                        );
+                      },
+                    ),
             ),
             Expanded(
               child: Padding(
@@ -397,7 +439,36 @@ class _SearchPageState extends State<SearchPage> {
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: IconButton(
-                onPressed: () {},
+                onPressed: () async {
+                  final carId = carData['id'];
+                  if (carId != null) {
+                    // Check if already favorite
+                    final isFav = await _firestoreHelper.isCarFavorite(carId);
+                    if (isFav) {
+                      await _firestoreHelper.removeFromFavorites(carId);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Removed from favorites'),
+                            backgroundColor: Colors.orange,
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                    } else {
+                      await _firestoreHelper.addToFavorites(carId);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Added to favorites'),
+                            backgroundColor: Colors.green,
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                    }
+                  }
+                },
                 icon: const Icon(
                   Icons.favorite_border,
                   color: Color(0xFFFFB347),

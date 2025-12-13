@@ -1,5 +1,6 @@
 import 'package:autohub/screens/chat/blocked_users_page.dart';
 import 'package:autohub/screens/chat/chat_conversation_page.dart';
+import 'package:autohub/helper/chat_service.dart';
 import 'package:flutter/material.dart';
 
 class ChatPage extends StatefulWidget {
@@ -10,44 +11,7 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  List<Map<String, dynamic>> conversations = [
-    {
-      'name': 'Ahmed Ali',
-      'lastMessage': 'Is the BMW still available?',
-      'time': '2:30 PM',
-      'unread': 2,
-      'avatar': 'A',
-      'carTitle': 'BMW X5 2023',
-      'isOnline': true,
-    },
-    {
-      'name': 'Sarah Khan',
-      'lastMessage': 'Can we negotiate the price?',
-      'time': '1:15 PM',
-      'unread': 0,
-      'avatar': 'S',
-      'carTitle': 'Honda Civic',
-      'isOnline': false,
-    },
-    {
-      'name': 'Usman Sheikh',
-      'lastMessage': 'Thanks for the info!',
-      'time': '11:45 AM',
-      'unread': 0,
-      'avatar': 'U',
-      'carTitle': 'Toyota Corolla',
-      'isOnline': true,
-    },
-    {
-      'name': 'Fatima Malik',
-      'lastMessage': 'When can I see the car?',
-      'time': 'Yesterday',
-      'unread': 1,
-      'avatar': 'F',
-      'carTitle': 'Mercedes C-Class',
-      'isOnline': false,
-    },
-  ];
+  final ChatService _chatService = ChatService.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -95,55 +59,173 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildConversationList() {
-    return Column(
-      children: [
-        // Active Deals Header
-        Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Active Conversations',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFB347),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${conversations.where((c) => c['unread'] > 0).length} New',
-                  style: const TextStyle(
-                    color: Color(0xFF1A1A1A),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _chatService.getUserChats(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFFFFB347)),
+          );
+        }
 
-        // Conversations List
-        Expanded(
-          child: ListView.builder(
-            itemCount: conversations.length,
-            itemBuilder: (context, index) {
-              return _buildConversationTile(conversations[index]);
-            },
-          ),
-        ),
-      ],
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error loading chats: ${snapshot.error}',
+              style: const TextStyle(color: Colors.white),
+            ),
+          );
+        }
+
+        final chats = snapshot.data ?? [];
+
+        if (chats.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        final currentUserId = _chatService.currentUserId ?? '';
+        final newMessagesCount = chats.where((chat) {
+          final unreadCount = chat['unreadCount'];
+          if (unreadCount is Map) {
+            return (unreadCount[currentUserId] ?? 0) > 0;
+          }
+          return false;
+        }).length;
+
+        return Column(
+          children: [
+            // Active Deals Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Active Conversations',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (newMessagesCount > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFB347),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$newMessagesCount New',
+                        style: const TextStyle(
+                          color: Color(0xFF1A1A1A),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // Conversations List
+            Expanded(
+              child: ListView.builder(
+                physics: const BouncingScrollPhysics(),
+                itemCount: chats.length,
+                itemBuilder: (context, index) {
+                  return _buildConversationTile(chats[index]);
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildConversationTile(Map<String, dynamic> conversation) {
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.chat_bubble_outline,
+            size: 80,
+            color: Colors.white.withOpacity(0.3),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No conversations yet',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Start chatting with sellers!',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.5),
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConversationTile(Map<String, dynamic> chat) {
+    final otherUserName = chat['otherUserName'] ?? 'Unknown';
+    final otherUserId = chat['otherUserId'] ?? '';
+    final lastMessage = chat['lastMessage'] ?? '';
+
+    // Convert timestamp from int to DateTime
+    DateTime? timestamp;
+    final lastMessageTime = chat['lastMessageTime'];
+    if (lastMessageTime != null) {
+      if (lastMessageTime is int) {
+        timestamp = DateTime.fromMillisecondsSinceEpoch(lastMessageTime);
+      } else if (lastMessageTime is DateTime) {
+        timestamp = lastMessageTime;
+      }
+    }
+
+    final currentUserId = _chatService.currentUserId ?? '';
+    final unreadCountMap = chat['unreadCount'];
+    final unreadCount = (unreadCountMap is Map)
+        ? (unreadCountMap[currentUserId] ?? 0) as int
+        : 0;
+    final carTitle = chat['carTitle'] ?? 'Car';
+    final chatId = chat['chatId'] ?? '';
+
+    // Format timestamp
+    String timeText = '';
+    if (timestamp != null) {
+      final now = DateTime.now();
+      final difference = now.difference(timestamp);
+
+      if (difference.inDays == 0) {
+        timeText =
+            '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+      } else if (difference.inDays == 1) {
+        timeText = 'Yesterday';
+      } else if (difference.inDays < 7) {
+        timeText = '${difference.inDays}d ago';
+      } else {
+        timeText = '${timestamp.day}/${timestamp.month}';
+      }
+    }
+
+    // Get first letter for avatar
+    final avatar = otherUserName.isNotEmpty
+        ? otherUserName[0].toUpperCase()
+        : '?';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
@@ -152,51 +234,59 @@ class _ChatPageState extends State<ChatPage> {
         border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: ListTile(
-        leading: Stack(
-          children: [
-            CircleAvatar(
-              backgroundColor: const Color(0xFFFFB347),
-              child: Text(
-                conversation['avatar'],
-                style: const TextStyle(
-                  color: Color(0xFF1A1A1A),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            if (conversation['isOnline'])
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFF2C2C2C),
-                      width: 2,
+        leading: StreamBuilder<bool>(
+          stream: _chatService.getUserOnlineStatus(otherUserId),
+          builder: (context, onlineSnapshot) {
+            final isOnline = onlineSnapshot.data ?? false;
+            return Stack(
+              children: [
+                CircleAvatar(
+                  backgroundColor: const Color(0xFFFFB347),
+                  child: Text(
+                    avatar,
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-              ),
-          ],
+                if (isOnline)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF2C2C2C),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
         title: Row(
           children: [
             Expanded(
               child: Text(
-                conversation['name'],
+                otherUserName,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             Text(
-              conversation['time'],
+              timeText,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.6),
                 fontSize: 12,
@@ -209,19 +299,21 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             const SizedBox(height: 4),
             Text(
-              'Re: ${conversation['carTitle']}',
+              'Re: $carTitle',
               style: const TextStyle(
                 color: Color(0xFFFFB347),
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 2),
             Row(
               children: [
                 Expanded(
                   child: Text(
-                    conversation['lastMessage'],
+                    lastMessage,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.7),
                       fontSize: 14,
@@ -230,7 +322,7 @@ class _ChatPageState extends State<ChatPage> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (conversation['unread'] > 0)
+                if (unreadCount > 0)
                   Container(
                     margin: const EdgeInsets.only(left: 8),
                     padding: const EdgeInsets.symmetric(
@@ -242,7 +334,7 @@ class _ChatPageState extends State<ChatPage> {
                       shape: BoxShape.circle,
                     ),
                     child: Text(
-                      '${conversation['unread']}',
+                      '$unreadCount',
                       style: const TextStyle(
                         color: Color(0xFF1A1A1A),
                         fontSize: 12,
@@ -254,18 +346,23 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ],
         ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChatConversationPage(
-                conversationName: conversation['name'],
-                avatar: conversation['avatar'],
-                carTitle: conversation['carTitle'],
-                isOnline: conversation['isOnline'],
+        onTap: () async {
+          // Mark messages as read when opening chat
+          await _chatService.markMessagesAsRead(chatId);
+
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatConversationPage(
+                  chatId: chatId,
+                  otherUserId: otherUserId,
+                  otherUserName: otherUserName,
+                  carTitle: carTitle,
+                ),
               ),
-            ),
-          );
+            );
+          }
         },
       ),
     );

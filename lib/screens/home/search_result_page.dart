@@ -1,5 +1,4 @@
-import 'dart:convert';
-import 'package:autohub/helper/db_helper.dart';
+import 'package:autohub/helper/firestore_helper.dart';
 import 'package:autohub/screens/home/car_detail_page.dart';
 import 'package:flutter/material.dart';
 
@@ -30,7 +29,9 @@ class SearchResultPage extends StatefulWidget {
 }
 
 class _SearchResultPageState extends State<SearchResultPage> {
+  final FirestoreHelper _firestoreHelper = FirestoreHelper.instance;
   List<Map<String, dynamic>> searchResults = [];
+  Set<String> favoritedCarIds = {};
   bool isLoading = true;
   String sortBy = 'newest'; // newest, price_low, price_high, mileage
 
@@ -46,66 +47,37 @@ class _SearchResultPageState extends State<SearchResultPage> {
     });
 
     try {
-      // Get all cars from database
-      List<Map<String, dynamic>> allCars = await DbHelper.getInstance.getCars();
-      List<Map<String, dynamic>> filtered = allCars.where((car) {
-        if (widget.searchQuery.isNotEmpty) {
-          String query = widget.searchQuery.toLowerCase();
-          String title = (car[DbHelper.COLUMN_TITLE] ?? '')
-              .toString()
-              .toLowerCase();
-          String category = (car[DbHelper.COLUMN_CATEGORY] ?? '')
-              .toString()
-              .toLowerCase();
+      // Get cars from Firestore with filters
+      List<Map<String, dynamic>> filtered = await _firestoreHelper.searchCars(
+        query: widget.searchQuery,
+        category: widget.category,
+        minPrice: widget.priceRange?.start.toInt(),
+        maxPrice: widget.priceRange?.end.toInt(),
+        fuel: widget.fuelType,
+        transmission: widget.transmission,
+      );
 
-          if (!title.contains(query) && !category.contains(query)) {
-            return false;
-          }
-        }
-        if (widget.category != null && widget.category != 'All') {
-          if (car[DbHelper.COLUMN_CATEGORY] != widget.category) {
-            return false;
-          }
-        }
-        if (widget.priceRange != null) {
-          int price = car[DbHelper.COLUMN_PRICE] ?? 0;
-          if (price < widget.priceRange!.start ||
-              price > widget.priceRange!.end) {
-            return false;
-          }
-        }
-        if (widget.fuelType != null && widget.fuelType != 'All') {
-          if (car[DbHelper.COLUMN_FUEL] != widget.fuelType) {
-            return false;
-          }
-        }
-        if (widget.transmission != null && widget.transmission != 'All') {
-          if (car[DbHelper.COLUMN_TRANSMISSION] != widget.transmission) {
-            return false;
-          }
-        }
-        if (widget.minYear != null) {
-          int year = car[DbHelper.COLUMN_YEAR] ?? 0;
-          if (year < widget.minYear!) {
-            return false;
-          }
-        }
+      // Apply additional filters
+      if (widget.minYear != null) {
+        filtered = filtered.where((car) {
+          int year = car['year'] ?? 0;
+          return year >= widget.minYear!;
+        }).toList();
+      }
 
-        if (widget.maxYear != null) {
-          int year = car[DbHelper.COLUMN_YEAR] ?? 0;
-          if (year > widget.maxYear!) {
-            return false;
-          }
-        }
-        if (widget.maxMileage != null) {
-          int mileage = car[DbHelper.COLUMN_MILEAGE] ?? 0;
-          if (mileage > widget.maxMileage!) {
-            return false;
-          }
-        }
+      if (widget.maxYear != null) {
+        filtered = filtered.where((car) {
+          int year = car['year'] ?? 0;
+          return year <= widget.maxYear!;
+        }).toList();
+      }
 
-        return true;
-      }).toList();
+      if (widget.maxMileage != null) {
+        filtered = filtered.where((car) {
+          int mileage = car['mileage'] ?? 0;
+          return mileage <= widget.maxMileage!;
+        }).toList();
+      }
 
       _sortResults(filtered);
 
@@ -124,50 +96,21 @@ class _SearchResultPageState extends State<SearchResultPage> {
   void _sortResults(List<Map<String, dynamic>> results) {
     switch (sortBy) {
       case 'price_low':
-        results.sort(
-          (a, b) => (a[DbHelper.COLUMN_PRICE] ?? 0).compareTo(
-            b[DbHelper.COLUMN_PRICE] ?? 0,
-          ),
-        );
+        results.sort((a, b) => (a['price'] ?? 0).compareTo(b['price'] ?? 0));
         break;
       case 'price_high':
-        results.sort(
-          (a, b) => (b[DbHelper.COLUMN_PRICE] ?? 0).compareTo(
-            a[DbHelper.COLUMN_PRICE] ?? 0,
-          ),
-        );
+        results.sort((a, b) => (b['price'] ?? 0).compareTo(a['price'] ?? 0));
         break;
       case 'mileage':
         results.sort(
-          (a, b) => (a[DbHelper.COLUMN_MILEAGE] ?? 0).compareTo(
-            b[DbHelper.COLUMN_MILEAGE] ?? 0,
-          ),
+          (a, b) => (a['mileage'] ?? 0).compareTo(b['mileage'] ?? 0),
         );
         break;
       case 'newest':
       default:
-        results.sort(
-          (a, b) => (b[DbHelper.COLUMN_YEAR] ?? 0).compareTo(
-            a[DbHelper.COLUMN_YEAR] ?? 0,
-          ),
-        );
+        results.sort((a, b) => (b['year'] ?? 0).compareTo(a['year'] ?? 0));
         break;
     }
-  }
-
-  List<String> _parseImages(String? imagesJson) {
-    if (imagesJson == null || imagesJson.isEmpty) {
-      return [];
-    }
-    try {
-      final decoded = jsonDecode(imagesJson);
-      if (decoded is List) {
-        return decoded.cast<String>();
-      }
-    } catch (e) {
-      print('Error parsing images: $e');
-    }
-    return [];
   }
 
   @override
@@ -422,7 +365,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
   }
 
   Widget _buildCarCard(Map<String, dynamic> car) {
-    List<String> images = _parseImages(car[DbHelper.COLUMN_IMAGES]);
+    List<String> images = List<String>.from(car['imageUrls'] ?? []);
     String displayImage = images.isNotEmpty ? images[0] : '';
 
     return GestureDetector(
@@ -431,14 +374,16 @@ class _SearchResultPageState extends State<SearchResultPage> {
           context,
           MaterialPageRoute(
             builder: (context) => CarDetailPage(
-              carName: car[DbHelper.COLUMN_TITLE] ?? 'Unknown',
-              price: 'Rs ${_formatPrice(car[DbHelper.COLUMN_PRICE] ?? 0)}',
-              location: 'Pakistan',
+              carName: car['title'] ?? 'Unknown',
+              price: 'Rs ${_formatPrice(car['price'] ?? 0)}',
+              location: car['location'] ?? 'Pakistan',
               image: displayImage.isNotEmpty
                   ? displayImage
                   : 'assets/images/car1.jpg',
               specs:
-                  '${car[DbHelper.COLUMN_FUEL]} • ${car[DbHelper.COLUMN_YEAR]} • ${_formatMileage(car[DbHelper.COLUMN_MILEAGE] ?? 0)}',
+                  '${car['fuel']} • ${car['year']} • ${_formatMileage(car['mileage'] ?? 0)}',
+              carId: car['id'],
+              sellerId: car['userId'],
             ),
           ),
         );
@@ -492,7 +437,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      car[DbHelper.COLUMN_CONDITION] ?? 'Used',
+                      car['condition'] ?? 'Used',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -544,7 +489,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          car[DbHelper.COLUMN_TITLE] ?? 'Unknown',
+                          car['title'] ?? 'Unknown',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 18,
@@ -555,19 +500,72 @@ class _SearchResultPageState extends State<SearchResultPage> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(
-                          Icons.favorite_border,
-                          color: Color(0xFFFFB347),
+                        icon: Icon(
+                          favoritedCarIds.contains(car['id'])
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: const Color(0xFFFFB347),
                         ),
-                        onPressed: () {
-                          // Add to favorites functionality
+                        onPressed: () async {
+                          final carId = car['id'] ?? '';
+                          if (carId.isEmpty) return;
+
+                          setState(() {
+                            if (favoritedCarIds.contains(carId)) {
+                              favoritedCarIds.remove(carId);
+                            } else {
+                              favoritedCarIds.add(carId);
+                            }
+                          });
+
+                          try {
+                            if (favoritedCarIds.contains(carId)) {
+                              await _firestoreHelper.addToFavorites(carId);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Added to favorites'),
+                                    backgroundColor: Color(0xFFFFB347),
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              }
+                            } else {
+                              await _firestoreHelper.removeFromFavorites(carId);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Removed from favorites'),
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            // Revert on error
+                            setState(() {
+                              if (favoritedCarIds.contains(carId)) {
+                                favoritedCarIds.remove(carId);
+                              } else {
+                                favoritedCarIds.add(carId);
+                              }
+                            });
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
                         },
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Rs ${_formatPrice(car[DbHelper.COLUMN_PRICE] ?? 0)}',
+                    'Rs ${_formatPrice(car['price'] ?? 0)}',
                     style: const TextStyle(
                       color: Color(0xFFFFB347),
                       fontSize: 20,
@@ -583,19 +581,19 @@ class _SearchResultPageState extends State<SearchResultPage> {
                     children: [
                       _buildSpecChip(
                         Icons.calendar_today,
-                        car[DbHelper.COLUMN_YEAR]?.toString() ?? 'N/A',
+                        car['year']?.toString() ?? 'N/A',
                       ),
                       _buildSpecChip(
                         Icons.speed,
-                        _formatMileage(car[DbHelper.COLUMN_MILEAGE] ?? 0),
+                        _formatMileage(car['mileage'] ?? 0),
                       ),
                       _buildSpecChip(
                         Icons.local_gas_station,
-                        car[DbHelper.COLUMN_FUEL] ?? 'N/A',
+                        car['fuel'] ?? 'N/A',
                       ),
                       _buildSpecChip(
                         Icons.settings,
-                        car[DbHelper.COLUMN_TRANSMISSION] ?? 'N/A',
+                        car['transmission'] ?? 'N/A',
                       ),
                     ],
                   ),
@@ -616,7 +614,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
                       ),
                     ),
                     child: Text(
-                      car[DbHelper.COLUMN_CATEGORY] ?? 'Car',
+                      car['category'] ?? 'Car',
                       style: const TextStyle(
                         color: Color(0xFFFFB347),
                         fontSize: 12,

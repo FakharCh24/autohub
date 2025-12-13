@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../helper/firestore_helper.dart';
 
 class BlockedUsersPage extends StatefulWidget {
   const BlockedUsersPage({super.key});
@@ -8,20 +9,55 @@ class BlockedUsersPage extends StatefulWidget {
 }
 
 class _BlockedUsersPageState extends State<BlockedUsersPage> {
-  List<Map<String, dynamic>> blockedUsers = [
-    {
-      'name': 'Spam User',
-      'avatar': 'S',
-      'blockedDate': '2024-01-10',
-      'reason': 'Spam messages',
-    },
-    {
-      'name': 'Fake Seller',
-      'avatar': 'F',
-      'blockedDate': '2024-01-05',
-      'reason': 'Suspicious activity',
-    },
-  ];
+  final FirestoreHelper _firestoreHelper = FirestoreHelper.instance;
+  bool _isLoading = true;
+  List<Map<String, dynamic>> blockedUsers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBlockedUsers();
+  }
+
+  Future<void> _loadBlockedUsers() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final users = await _firestoreHelper.getBlockedUsers();
+
+    if (mounted) {
+      setState(() {
+        blockedUsers = users;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _unblockUser(String userId, int index) async {
+    final success = await _firestoreHelper.unblockUser(userId);
+
+    if (mounted) {
+      if (success) {
+        setState(() {
+          blockedUsers.removeAt(index);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User unblocked successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to unblock user'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +80,13 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
         ),
         centerTitle: true,
       ),
-      body: blockedUsers.isEmpty
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFB347)),
+              ),
+            )
+          : blockedUsers.isEmpty
           ? _buildEmptyState()
           : ListView.builder(
               padding: const EdgeInsets.all(16),
@@ -57,6 +99,10 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
   }
 
   Widget _buildBlockedUserCard(Map<String, dynamic> user, int index) {
+    final userName = user['name'] ?? 'Unknown User';
+    final userId = user['userId'] ?? '';
+    final userImage = user['photoUrl'] ?? '';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -69,13 +115,18 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
         children: [
           CircleAvatar(
             backgroundColor: Colors.red.withOpacity(0.3),
-            child: Text(
-              user['avatar'],
-              style: const TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            backgroundImage: userImage.isNotEmpty
+                ? NetworkImage(userImage)
+                : null,
+            child: userImage.isEmpty
+                ? Text(
+                    userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -83,7 +134,7 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user['name'],
+                  userName,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -92,32 +143,17 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Blocked on ${user['blockedDate']}',
+                  user['email'] ?? 'No email',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.6),
                     fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    user['reason'],
-                    style: const TextStyle(color: Colors.red, fontSize: 11),
                   ),
                 ),
               ],
             ),
           ),
           TextButton(
-            onPressed: () => _unblockUser(index),
+            onPressed: () => _unblockUser(userId, index),
             child: const Text(
               'Unblock',
               style: TextStyle(color: Color(0xFFFFB347)),
@@ -153,53 +189,6 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
           ),
         ],
       ),
-    );
-  }
-
-  void _unblockUser(int index) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF2C2C2C),
-          title: const Text(
-            'Unblock User',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          content: Text(
-            'Unblock ${blockedUsers[index]['name']}? They will be able to message you again.',
-            style: const TextStyle(color: Colors.white),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFB347),
-                foregroundColor: const Color(0xFF1A1A1A),
-              ),
-              onPressed: () {
-                setState(() {
-                  blockedUsers.removeAt(index);
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('User unblocked'),
-                    backgroundColor: Color(0xFFFFB347),
-                  ),
-                );
-              },
-              child: const Text('Unblock'),
-            ),
-          ],
-        );
-      },
     );
   }
 }

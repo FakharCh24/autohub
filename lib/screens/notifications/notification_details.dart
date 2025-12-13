@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:autohub/screens/chat/chat_conversation_page.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class NotificationDetails extends StatelessWidget {
   final Map<String, dynamic> notification;
@@ -177,13 +179,83 @@ class NotificationDetails extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Opening conversation...'),
-                      backgroundColor: Color(0xFFFFB347),
-                    ),
-                  );
+                onPressed: () async {
+                  // Navigate to chat conversation if relatedId (chatId) exists
+                  final chatId = notification['relatedId'];
+                  if (chatId != null && chatId.isNotEmpty) {
+                    try {
+                      // Get chat details from Firebase
+                      final chatRef = FirebaseDatabase.instance.ref(
+                        'chats/$chatId',
+                      );
+                      final snapshot = await chatRef.get();
+
+                      if (snapshot.exists) {
+                        final chatData = Map<String, dynamic>.from(
+                          snapshot.value as Map,
+                        );
+                        final participants = List<String>.from(
+                          chatData['participants'] ?? [],
+                        );
+                        final currentUserId =
+                            notification['userId']; // The recipient (current user)
+
+                        // Find the other user
+                        final otherUserId = participants.firstWhere(
+                          (id) => id != currentUserId,
+                          orElse: () => '',
+                        );
+
+                        if (otherUserId.isNotEmpty && context.mounted) {
+                          // Extract sender name from title (format: "Name sent you a message")
+                          String otherUserName = 'User';
+                          final titleParts = notification['title']
+                              .toString()
+                              .split(' sent you');
+                          if (titleParts.isNotEmpty) {
+                            otherUserName = titleParts[0];
+                          }
+
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ChatConversationPage(
+                                chatId: chatId,
+                                otherUserId: otherUserId,
+                                otherUserName: otherUserName,
+                                carTitle: chatData['carTitle'] ?? 'Car',
+                              ),
+                            ),
+                          );
+                        }
+                      } else {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Chat not found'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error opening chat: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Chat information not available'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 },
                 icon: const Icon(Icons.message),
                 label: const Text('View Conversation'),
@@ -202,15 +274,10 @@ class NotificationDetails extends StatelessWidget {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Reply sent'),
-                      backgroundColor: Color(0xFFFFB347),
-                    ),
-                  );
+                  Navigator.pop(context);
                 },
-                icon: const Icon(Icons.reply),
-                label: const Text('Quick Reply'),
+                icon: const Icon(Icons.close),
+                label: const Text('Close'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFFFFB347),
                   side: const BorderSide(color: Color(0xFFFFB347)),

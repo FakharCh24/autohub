@@ -1,0 +1,25 @@
+{
+  "rules": {
+    "chats": {
+      ".read": "auth != null",
+      ".indexOn": ["lastMessageTime"],
+      "$chatId": {
+        ".write": "auth != null"
+      }
+    },
+    "userStatus": {
+      "$userId": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid == $userId"
+      }
+    },
+    "typing": {
+      "$chatId": {
+        "$userId": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid == $userId"
+        }
+      }
+    }
+  }
+}

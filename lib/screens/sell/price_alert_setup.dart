@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
+import '../../services/price_alert_service.dart';
 
 class PriceAlertSetup extends StatefulWidget {
   final String carName;
+  final String? carId;
+  final double? currentPrice;
+  final String? carImage;
 
-  const PriceAlertSetup({super.key, required this.carName});
+  const PriceAlertSetup({
+    super.key,
+    required this.carName,
+    this.carId,
+    this.currentPrice,
+    this.carImage,
+  });
 
   @override
   State<PriceAlertSetup> createState() => _PriceAlertSetupState();
@@ -11,9 +21,11 @@ class PriceAlertSetup extends StatefulWidget {
 
 class _PriceAlertSetupState extends State<PriceAlertSetup> {
   final TextEditingController _targetPriceController = TextEditingController();
+  final PriceAlertService _alertService = PriceAlertService.instance;
   String selectedAlertType = 'Below';
   bool notifyByEmail = true;
   bool notifyByPush = true;
+  bool isCreating = false;
 
   @override
   Widget build(BuildContext context) {
@@ -210,7 +222,7 @@ class _PriceAlertSetupState extends State<PriceAlertSetup> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _createAlert,
+                onPressed: isCreating ? null : _createAlert,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFFB347),
                   foregroundColor: const Color(0xFF1A1A1A),
@@ -218,11 +230,26 @@ class _PriceAlertSetupState extends State<PriceAlertSetup> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  disabledBackgroundColor: Colors.grey,
                 ),
-                child: const Text(
-                  'Create Alert',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                child: isCreating
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF1A1A1A),
+                          ),
+                        ),
+                      )
+                    : const Text(
+                        'Create Alert',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -269,7 +296,7 @@ class _PriceAlertSetupState extends State<PriceAlertSetup> {
     );
   }
 
-  void _createAlert() {
+  void _createAlert() async {
     if (_targetPriceController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -280,44 +307,108 @@ class _PriceAlertSetupState extends State<PriceAlertSetup> {
       return;
     }
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF2C2C2C),
-          title: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 32),
-              SizedBox(width: 12),
-              Text(
-                'Alert Created!',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+    // Validate car ID is present
+    if (widget.carId == null || widget.carId!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to create alert: Car information missing'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Show loading
+    setState(() {
+      isCreating = true;
+    });
+
+    try {
+      final targetPrice = double.parse(_targetPriceController.text);
+
+      // Create alert in Firebase
+      final alertId = await _alertService.createAlert(
+        carId: widget.carId!,
+        carName: widget.carName,
+        targetPrice: targetPrice,
+        alertType: selectedAlertType,
+        notifyByPush: notifyByPush,
+        notifyByEmail: notifyByEmail,
+        currentPrice: widget.currentPrice,
+        carImage: widget.carImage,
+      );
+
+      setState(() {
+        isCreating = false;
+      });
+
+      if (alertId != null) {
+        // Success
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                backgroundColor: const Color(0xFF2C2C2C),
+                title: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 32),
+                    SizedBox(width: 12),
+                    Text(
+                      'Alert Created!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          content: Text(
-            'You\'ll be notified when the price of ${widget.carName} goes $selectedAlertType PKR ${_targetPriceController.text}',
-            style: const TextStyle(color: Colors.white),
-          ),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFB347),
-                foregroundColor: const Color(0xFF1A1A1A),
-              ),
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-              },
-              child: const Text('OK'),
+                content: Text(
+                  'You\'ll be notified when the price of ${widget.carName} goes $selectedAlertType PKR ${_targetPriceController.text}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                actions: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFB347),
+                      foregroundColor: const Color(0xFF1A1A1A),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.pop(context);
+                    },
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+      } else {
+        // Failed
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to create alert. Please try again.'),
+              backgroundColor: Colors.red,
             ),
-          ],
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        isCreating = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
         );
-      },
-    );
+      }
+    }
   }
 
   @override

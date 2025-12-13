@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../helper/firestore_helper.dart';
 
 class ReviewsScreen extends StatefulWidget {
   final String carName;
+  final String? carId;
 
-  const ReviewsScreen({Key? key, required this.carName}) : super(key: key);
+  const ReviewsScreen({Key? key, required this.carName, this.carId})
+    : super(key: key);
 
   @override
   State<ReviewsScreen> createState() => _ReviewsScreenState();
@@ -14,143 +18,186 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
   final TextEditingController _reviewController = TextEditingController();
   String _selectedFilter = 'All';
 
-  // Sample reviews data
-  final List<Map<String, dynamic>> _reviews = [
-    {
-      'userName': 'Fakhir Ashraf',
-      'userImage': 'assets/images/Profile.jpg',
-      'rating': 5,
-      'date': 'Nov 5, 2025',
-      'review':
-          'Excellent car! The seller was very professional and the car was exactly as described. Highly recommended!',
-      'helpful': 24,
-      'images': [],
-    },
-    {
-      'userName': 'Sarah Smith',
-      'userImage': 'assets/images/Profile.jpg',
-      'rating': 4,
-      'date': 'Nov 3, 2025',
-      'review':
-          'Good condition overall. Minor scratches but nothing major. Fair price for the quality.',
-      'helpful': 15,
-      'images': ['assets/images/car1.jpg', 'assets/images/car2.jpg'],
-    },
-    {
-      'userName': 'Mike Johnson',
-      'userImage': 'assets/images/Profile.jpg',
-      'rating': 5,
-      'date': 'Oct 28, 2025',
-      'review':
-          'Amazing experience! The car runs perfectly and the documentation was complete. Would buy again!',
-      'helpful': 32,
-      'images': [],
-    },
-    {
-      'userName': 'Emma Wilson',
-      'userImage': 'assets/images/Profile.jpg',
-      'rating': 3,
-      'date': 'Oct 25, 2025',
-      'review':
-          'Decent car but had some issues with the AC. Seller fixed it before delivery though.',
-      'helpful': 8,
-      'images': [],
-    },
-  ];
-
-  double get _averageRating {
-    if (_reviews.isEmpty) return 0;
-    return _reviews.map((r) => r['rating'] as int).reduce((a, b) => a + b) /
-        _reviews.length;
+  double _calculateAverageRating(List<Map<String, dynamic>> reviews) {
+    if (reviews.isEmpty) return 0;
+    return reviews.map((r) => r['rating'] as int).reduce((a, b) => a + b) /
+        reviews.length;
   }
 
-  Map<int, int> get _ratingDistribution {
+  Map<int, int> _calculateRatingDistribution(
+    List<Map<String, dynamic>> reviews,
+  ) {
     Map<int, int> distribution = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
-    for (var review in _reviews) {
+    for (var review in reviews) {
       distribution[review['rating'] as int] =
           (distribution[review['rating'] as int] ?? 0) + 1;
     }
     return distribution;
   }
 
-  List<Map<String, dynamic>> get _filteredReviews {
-    if (_selectedFilter == 'All') return _reviews;
+  List<Map<String, dynamic>> _filterReviews(
+    List<Map<String, dynamic>> reviews,
+  ) {
+    if (_selectedFilter == 'All') return reviews;
     int rating = int.parse(_selectedFilter.split(' ')[0]);
-    return _reviews.where((r) => r['rating'] == rating).toList();
+    return reviews.where((r) => r['rating'] == rating).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF2C2C2C),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Reviews & Ratings',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontFamily: 'roboto_bold',
+    // If no carId, show error
+    if (widget.carId == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF1A1A1A),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF2C2C2C),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          // Car name
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Text(
-              widget.carName,
-              style: const TextStyle(
-                fontSize: 18,
-                fontFamily: 'roboto_bold',
-                color: Colors.white,
-              ),
+          title: const Text(
+            'Reviews & Ratings',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontFamily: 'roboto_bold',
             ),
           ),
-
-          // Rating Summary
-          _buildRatingSummary(),
-
-          const Divider(thickness: 1, color: Color(0xFF2C2C2C)),
-
-          // Filter Options
-          _buildFilterOptions(),
-
-          const Divider(thickness: 1, color: Color(0xFF2C2C2C)),
-
-          // Reviews List
-          Expanded(
-            child: _filteredReviews.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    itemCount: _filteredReviews.length,
-                    itemBuilder: (context, index) {
-                      return _buildReviewCard(_filteredReviews[index]);
-                    },
-                  ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showWriteReviewDialog,
-        backgroundColor: const Color(0xFFFFB347),
-        icon: const Icon(Icons.edit, color: Colors.black),
-        label: const Text(
-          'Write Review',
-          style: TextStyle(color: Colors.black, fontFamily: 'roboto_bold'),
+          centerTitle: true,
         ),
-      ),
+        body: const Center(
+          child: Text(
+            'Car ID not available',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      );
+    }
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: FirestoreHelper.instance.getCarReviews(widget.carId!),
+      builder: (context, snapshot) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            backgroundColor: const Color(0xFF1A1A1A),
+            appBar: _buildAppBar(),
+            body: const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFB347)),
+              ),
+            ),
+          );
+        }
+
+        // Error state
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: const Color(0xFF1A1A1A),
+            appBar: _buildAppBar(),
+            body: Center(
+              child: Text(
+                'Error loading reviews: ${snapshot.error}',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          );
+        }
+
+        // Get reviews data
+        final allReviews = snapshot.data ?? [];
+        final filteredReviews = _filterReviews(allReviews);
+        final averageRating = _calculateAverageRating(allReviews);
+        final ratingDistribution = _calculateRatingDistribution(allReviews);
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF1A1A1A),
+          appBar: _buildAppBar(),
+          body: Column(
+            children: [
+              // Car name
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                child: Text(
+                  widget.carName,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontFamily: 'roboto_bold',
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+              // Rating Summary
+              _buildRatingSummary(
+                allReviews,
+                averageRating,
+                ratingDistribution,
+              ),
+
+              const Divider(thickness: 1, color: Color(0xFF2C2C2C)),
+
+              // Filter Options
+              _buildFilterOptions(),
+
+              const Divider(thickness: 1, color: Color(0xFF2C2C2C)),
+
+              // Reviews List
+              Expanded(
+                child: filteredReviews.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        itemCount: filteredReviews.length,
+                        itemBuilder: (context, index) {
+                          return _buildReviewCard(filteredReviews[index]);
+                        },
+                      ),
+              ),
+            ],
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: _showWriteReviewDialog,
+            backgroundColor: const Color(0xFFFFB347),
+            icon: const Icon(Icons.edit, color: Colors.black),
+            label: const Text(
+              'Write Review',
+              style: TextStyle(color: Colors.black, fontFamily: 'roboto_bold'),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildRatingSummary() {
+  AppBar _buildAppBar() {
+    return AppBar(
+      backgroundColor: const Color(0xFF2C2C2C),
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: const Text(
+        'Reviews & Ratings',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontFamily: 'roboto_bold',
+        ),
+      ),
+      centerTitle: true,
+    );
+  }
+
+  Widget _buildRatingSummary(
+    List<Map<String, dynamic>> reviews,
+    double averageRating,
+    Map<int, int> ratingDistribution,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       child: Row(
@@ -162,7 +209,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
             child: Column(
               children: [
                 Text(
-                  _averageRating.toStringAsFixed(1),
+                  averageRating.toStringAsFixed(1),
                   style: const TextStyle(
                     fontSize: 48,
                     fontFamily: 'roboto_bold',
@@ -173,9 +220,9 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(5, (index) {
                     return Icon(
-                      index < _averageRating.floor()
+                      index < averageRating.floor()
                           ? Icons.star
-                          : (index < _averageRating
+                          : (index < averageRating
                                 ? Icons.star_half
                                 : Icons.star_border),
                       color: const Color(0xFFFFB347),
@@ -185,7 +232,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${_reviews.length} reviews',
+                  '${reviews.length} reviews',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.white.withOpacity(0.7),
@@ -203,10 +250,10 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
             flex: 3,
             child: Column(
               children: [5, 4, 3, 2, 1].map((rating) {
-                int count = _ratingDistribution[rating] ?? 0;
-                double percentage = _reviews.isEmpty
+                int count = ratingDistribution[rating] ?? 0;
+                double percentage = reviews.isEmpty
                     ? 0
-                    : count / _reviews.length;
+                    : count / reviews.length;
 
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
@@ -300,6 +347,39 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
   }
 
   Widget _buildReviewCard(Map<String, dynamic> review) {
+    // Format date from Timestamp
+    String formattedDate = 'Recently';
+    final createdAt = review['createdAt'];
+    if (createdAt != null) {
+      try {
+        final dateTime = (createdAt as Timestamp).toDate();
+        final now = DateTime.now();
+        final difference = now.difference(dateTime);
+
+        if (difference.inDays == 0) {
+          formattedDate = 'Today';
+        } else if (difference.inDays == 1) {
+          formattedDate = 'Yesterday';
+        } else if (difference.inDays < 7) {
+          formattedDate = '${difference.inDays} days ago';
+        } else if (difference.inDays < 30) {
+          formattedDate = '${(difference.inDays / 7).floor()} weeks ago';
+        } else {
+          formattedDate = '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+        }
+      } catch (e) {
+        formattedDate = 'Recently';
+      }
+    }
+
+    // Get user info with defaults
+    final userName = review['userName'] ?? 'Anonymous';
+    final userImage = review['userImage'] ?? '';
+    final reviewText = review['reviewText'] ?? 'No review text';
+    final rating = review['rating'] ?? 0;
+    final helpful = review['helpful'] ?? 0;
+    final imageUrls = review['imageUrls'] as List<dynamic>? ?? [];
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
@@ -313,7 +393,21 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundImage: AssetImage(review['userImage']),
+                backgroundColor: const Color(0xFFFFB347),
+                backgroundImage:
+                    userImage.isNotEmpty && userImage.startsWith('http')
+                    ? NetworkImage(userImage)
+                    : null,
+                child: userImage.isEmpty || !userImage.startsWith('http')
+                    ? Text(
+                        userName[0].toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      )
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -321,7 +415,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      review['userName'],
+                      userName,
                       style: const TextStyle(
                         fontSize: 16,
                         fontFamily: 'roboto_bold',
@@ -329,7 +423,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                       ),
                     ),
                     Text(
-                      review['date'],
+                      formattedDate,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.white.withOpacity(0.5),
@@ -348,7 +442,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
           Row(
             children: List.generate(5, (index) {
               return Icon(
-                index < review['rating'] ? Icons.star : Icons.star_border,
+                index < rating ? Icons.star : Icons.star_border,
                 color: const Color(0xFFFFB347),
                 size: 20,
               );
@@ -359,7 +453,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
 
           // Review Text
           Text(
-            review['review'],
+            reviewText,
             style: TextStyle(
               fontSize: 14,
               color: Colors.white.withOpacity(0.9),
@@ -369,23 +463,35 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
           ),
 
           // Review Images
-          if (review['images'].isNotEmpty) ...[
+          if (imageUrls.isNotEmpty) ...[
             const SizedBox(height: 12),
             SizedBox(
               height: 80,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: review['images'].length,
+                itemCount: imageUrls.length,
                 itemBuilder: (context, index) {
+                  final imageUrl = imageUrls[index] as String;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        review['images'][index],
+                      child: Image.network(
+                        imageUrl,
                         width: 80,
                         height: 80,
                         fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 80,
+                            height: 80,
+                            color: const Color(0xFF2C2C2C),
+                            child: Icon(
+                              Icons.broken_image,
+                              color: Colors.white.withOpacity(0.3),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   );
@@ -400,14 +506,19 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
           Row(
             children: [
               TextButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                  final reviewId = review['id'];
+                  if (reviewId != null) {
+                    FirestoreHelper.instance.markReviewHelpful(reviewId);
+                  }
+                },
                 icon: Icon(
                   Icons.thumb_up_outlined,
                   size: 18,
                   color: Colors.white.withOpacity(0.5),
                 ),
                 label: Text(
-                  'Helpful (${review['helpful']})',
+                  'Helpful ($helpful)',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.5),
                     fontFamily: 'roboto_regular',
@@ -576,17 +687,38 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                         onPressed:
                             _selectedRating > 0 &&
                                 _reviewController.text.isNotEmpty
-                            ? () {
-                                // Submit review logic
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Review submitted successfully!',
+                            ? () async {
+                                // Submit review to Firestore
+                                final success = await FirestoreHelper.instance
+                                    .addReview(
+                                      carId: widget.carId!,
+                                      rating: _selectedRating,
+                                      reviewText: _reviewController.text.trim(),
+                                    );
+
+                                if (mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        success
+                                            ? 'Review submitted successfully!'
+                                            : 'Failed to submit review',
+                                      ),
+                                      backgroundColor: success
+                                          ? Colors.green
+                                          : Colors.red,
                                     ),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
+                                  );
+
+                                  // Reset form
+                                  if (success) {
+                                    setState(() {
+                                      _selectedRating = 0;
+                                      _reviewController.clear();
+                                    });
+                                  }
+                                }
                               }
                             : null,
                         style: ElevatedButton.styleFrom(

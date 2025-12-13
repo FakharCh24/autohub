@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:autohub/screens/home/browse/comparison_results_screen.dart';
+import 'package:autohub/screens/home/browse/car_selection_dialog.dart';
 
 class CompareCars extends StatefulWidget {
   const CompareCars({super.key});
@@ -9,30 +10,7 @@ class CompareCars extends StatefulWidget {
 }
 
 class _CompareCarsState extends State<CompareCars> {
-  final List<Map<String, dynamic>> cars = [
-    {
-      'name': 'BMW M3 2022',
-      'price': 'PKR 17,500,000',
-      'year': '2022',
-      'mileage': '12,000 km',
-      'fuel': 'Petrol',
-      'transmission': 'Automatic',
-      'engine': '3.0L',
-      'power': '503 hp',
-      'image': 'assets/images/bmw.jpg',
-    },
-    {
-      'name': 'Mercedes C-Class 2021',
-      'price': 'PKR 12,000,000',
-      'year': '2021',
-      'mileage': '25,000 km',
-      'fuel': 'Diesel',
-      'transmission': 'Automatic',
-      'engine': '2.0L',
-      'power': '255 hp',
-      'image': 'assets/images/merc.jpg',
-    },
-  ];
+  List<Map<String, dynamic>> cars = [];
 
   @override
   Widget build(BuildContext context) {
@@ -61,117 +39,183 @@ class _CompareCarsState extends State<CompareCars> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Car Images
-            Container(
-              height: 200,
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: cars
-                    .map(
-                      (car) => Expanded(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.2),
-                            ),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.asset(car['image'], fit: BoxFit.cover),
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-
-            // Comparison Table
-            _buildComparisonRow(
-              'Name',
-              cars.map((c) => c['name'] as String).toList(),
-            ),
-            _buildComparisonRow(
-              'Price',
-              cars.map((c) => c['price'] as String).toList(),
-              isHighlight: true,
-            ),
-            _buildComparisonRow(
-              'Year',
-              cars.map((c) => c['year'] as String).toList(),
-            ),
-            _buildComparisonRow(
-              'Mileage',
-              cars.map((c) => c['mileage'] as String).toList(),
-            ),
-            _buildComparisonRow(
-              'Fuel Type',
-              cars.map((c) => c['fuel'] as String).toList(),
-            ),
-            _buildComparisonRow(
-              'Transmission',
-              cars.map((c) => c['transmission'] as String).toList(),
-            ),
-            _buildComparisonRow(
-              'Engine',
-              cars.map((c) => c['engine'] as String).toList(),
-            ),
-            _buildComparisonRow(
-              'Power',
-              cars.map((c) => c['power'] as String).toList(),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Action Buttons
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
+      body: cars.isEmpty
+          ? _buildEmptyState()
+          : SingleChildScrollView(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.share),
-                      label: const Text('Share'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFFFB347),
-                        side: const BorderSide(color: Color(0xFFFFB347)),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
+                  // Car Images
+                  Container(
+                    height: 200,
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: cars
+                          .map(
+                            (car) => Expanded(
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.2),
+                                      ),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: _buildCarImage(car),
+                                    ),
+                                  ),
+                                  // Remove button
+                                  Positioned(
+                                    top: 8,
+                                    right: 12,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          cars.remove(car);
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                          .toList(),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                ComparisonResultsScreen(carsToCompare: cars),
+
+                  // Comparison Table
+                  _buildComparisonRow(
+                    'Name',
+                    cars
+                        .map(
+                          (c) =>
+                              c['title']?.toString() ??
+                              c['name']?.toString() ??
+                              'N/A',
+                        )
+                        .toList(),
+                  ),
+                  _buildComparisonRow(
+                    'Price',
+                    cars.map((c) {
+                      final price = c['price'];
+                      if (price is int) {
+                        return 'PKR $price';
+                      }
+                      return price?.toString() ?? 'N/A';
+                    }).toList(),
+                    isHighlight: true,
+                  ),
+                  _buildComparisonRow(
+                    'Year',
+                    cars.map((c) => c['year']?.toString() ?? 'N/A').toList(),
+                  ),
+                  _buildComparisonRow(
+                    'Mileage',
+                    cars.map((c) {
+                      final mileage = c['mileage'];
+                      if (mileage is int) {
+                        return '$mileage km';
+                      }
+                      return mileage?.toString() ?? 'N/A';
+                    }).toList(),
+                  ),
+                  _buildComparisonRow(
+                    'Fuel Type',
+                    cars.map((c) => c['fuel']?.toString() ?? 'N/A').toList(),
+                  ),
+                  _buildComparisonRow(
+                    'Transmission',
+                    cars
+                        .map((c) => c['transmission']?.toString() ?? 'N/A')
+                        .toList(),
+                  ),
+                  _buildComparisonRow(
+                    'Condition',
+                    cars
+                        .map((c) => c['condition']?.toString() ?? 'N/A')
+                        .toList(),
+                  ),
+                  _buildComparisonRow(
+                    'Category',
+                    cars
+                        .map((c) => c['category']?.toString() ?? 'N/A')
+                        .toList(),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Action Buttons
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                cars.clear();
+                              });
+                            },
+                            icon: const Icon(Icons.clear),
+                            label: const Text('Clear All'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFFFB347),
+                              side: const BorderSide(color: Color(0xFFFFB347)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                            ),
                           ),
-                        );
-                      },
-                      icon: const Icon(Icons.compare),
-                      label: const Text('Compare'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFB347),
-                        foregroundColor: const Color(0xFF1A1A1A),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: cars.length < 2
+                                ? null
+                                : () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            ComparisonResultsScreen(
+                                              carsToCompare: cars,
+                                            ),
+                                      ),
+                                    );
+                                  },
+                            icon: const Icon(Icons.compare),
+                            label: const Text('Compare'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFFB347),
+                              foregroundColor: const Color(0xFF1A1A1A),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              disabledBackgroundColor: Colors.grey,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -221,11 +265,111 @@ class _CompareCarsState extends State<CompareCars> {
     );
   }
 
-  void _addCarToCompare() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Select a car to add to comparison'),
-        backgroundColor: Color(0xFFFFB347),
+  void _addCarToCompare() async {
+    final selectedCars = await showDialog<List<Map<String, dynamic>>>(
+      context: context,
+      builder: (context) => CarSelectionDialog(alreadySelected: cars),
+    );
+
+    if (selectedCars != null && selectedCars.isNotEmpty) {
+      setState(() {
+        cars = selectedCars;
+      });
+    }
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.compare_arrows,
+              size: 100,
+              color: Colors.white.withOpacity(0.2),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No Cars Selected',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Tap the + button to select cars to compare',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: _addCarToCompare,
+              icon: const Icon(Icons.add),
+              label: const Text('Select Cars'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFB347),
+                foregroundColor: const Color(0xFF1A1A1A),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCarImage(Map<String, dynamic> car) {
+    // Check if it's a new car with imageUrls or old format with image
+    final imageUrls = car['imageUrls'] as List<dynamic>?;
+    final imageUrl = (imageUrls != null && imageUrls.isNotEmpty)
+        ? imageUrls[0].toString()
+        : null;
+
+    final imageAsset = car['image'] as String?;
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildPlaceholderImage();
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return _buildPlaceholderImage();
+        },
+      );
+    } else if (imageAsset != null && imageAsset.isNotEmpty) {
+      return Image.asset(
+        imageAsset,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildPlaceholderImage();
+        },
+      );
+    } else {
+      return _buildPlaceholderImage();
+    }
+  }
+
+  Widget _buildPlaceholderImage() {
+    return Container(
+      color: const Color(0xFF1A1A1A),
+      child: const Center(
+        child: Icon(Icons.car_rental, color: Colors.white54, size: 60),
       ),
     );
   }
