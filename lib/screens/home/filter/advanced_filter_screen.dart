@@ -350,12 +350,20 @@ class _AdvancedFilterScreenState extends State<AdvancedFilterScreen> {
   }
 
   void _applyFilters() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Filters applied successfully'),
-        backgroundColor: Color(0xFFFFB347),
-      ),
-    );
-    Navigator.pop(context);
+    // Create a map with all filter data
+    final filterData = {
+      'priceRange': _priceRange,
+      'yearRange': _yearRange,
+      'mileageRange': _mileageRange,
+      'categories': selectedCategories,
+      'fuelTypes': selectedFuelTypes,
+      'transmissions': selectedTransmissions,
+      'colors': selectedColors,
+      'registeredOnly': registeredOnly,
+      'negotiableOnly': negotiableOnly,
+    };
+
+    // Return filter data to the previous screen
+    Navigator.pop(context, filterData);
   }
 }

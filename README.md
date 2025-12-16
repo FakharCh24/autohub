@@ -123,9 +123,25 @@ flutter run
 
 ## 📚 Documentation
 
+### Setup & Configuration
+
 - **[SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md)** - Complete Firebase setup guide
-- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Comprehensive testing documentation
+- **[RELEASE_SIGNING.md](RELEASE_SIGNING.md)** - Create signed release builds for Play Store
+
+### Testing
+
+- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Comprehensive testing documentation (40+ test cases)
 - **[QUICK_TEST.md](QUICK_TEST.md)** - 15-minute essential testing guide
+
+### Legal & Compliance
+
+- **[PRIVACY_POLICY.md](PRIVACY_POLICY.md)** - Privacy policy (GDPR/CCPA compliant)
+- **[LICENSE](LICENSE)** - MIT License
+
+### Project Info
+
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and release notes
+- **[SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md)** - Pre-submission checklist and guide
 
 ---
 
@@ -375,10 +391,10 @@ This project is created for educational purposes.
 
 ## 👨‍💻 Developer
 
-**Name:** [Your Name]  
-**University:** [Your University]  
-**Email:** [Your Email]  
-**GitHub:** [Your GitHub]
+**Name:** Fakhar Ch  
+**GitHub:** [@FakharCh24](https://github.com/FakharCh24)  
+**Project:** AutoHub - Car Marketplace Application  
+**Course:** Mobile Application Development (MAD) Lab
 
 ---
 

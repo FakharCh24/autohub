@@ -1,5 +1,5 @@
 name: autohub
-description: "Simple Testing Project"
+description: "AutoHub - A comprehensive car marketplace app for buying and selling vehicles with real-time chat, advanced search, and Firebase backend integration."
 
 publish_to: "none"
 version: 1.0.0+1

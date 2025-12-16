@@ -468,6 +468,7 @@ class _EditListingScreenState extends State<EditListingScreen> {
           child: DropdownButtonFormField<String>(
             value: value,
             dropdownColor: const Color(0xFF2C2C2C),
+            isExpanded: true,
             decoration: InputDecoration(
               prefixIcon: Icon(icon, color: const Color(0xFFFFB347), size: 20),
               border: InputBorder.none,

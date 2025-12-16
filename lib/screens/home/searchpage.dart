@@ -40,13 +40,45 @@ class _SearchPageState extends State<SearchPage> {
           centerTitle: true,
           actions: [
             IconButton(
-              onPressed: () {
-                Navigator.push(
+              onPressed: () async {
+                final filterData = await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => const AdvancedFilterScreen(),
                   ),
                 );
+
+                // If filters were applied, navigate to search results with filters
+                if (filterData != null && mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SearchResultPage(
+                        searchQuery: _searchController.text,
+                        category: filterData['categories']?.isNotEmpty == true
+                            ? filterData['categories'][0]
+                            : selectedCategory != 'All'
+                            ? selectedCategory
+                            : null,
+                        priceRange: filterData['priceRange'] ?? priceRange,
+                        fuelType: filterData['fuelTypes']?.isNotEmpty == true
+                            ? filterData['fuelTypes'][0]
+                            : selectedFuel != 'All'
+                            ? selectedFuel
+                            : null,
+                        transmission:
+                            filterData['transmissions']?.isNotEmpty == true
+                            ? filterData['transmissions'][0]
+                            : selectedTransmission != 'All'
+                            ? selectedTransmission
+                            : null,
+                        minYear: filterData['yearRange']?.start.toInt(),
+                        maxYear: filterData['yearRange']?.end.toInt(),
+                        maxMileage: filterData['mileageRange']?.end.toInt(),
+                      ),
+                    ),
+                  );
+                }
               },
               icon: const Icon(Icons.tune, color: Color(0xFFFFB347)),
               tooltip: 'Advanced Filters',
@@ -220,13 +252,38 @@ class _SearchPageState extends State<SearchPage> {
                     );
                   }
 
-                  final cars = snapshot.data ?? [];
+                  var cars = snapshot.data ?? [];
+
+                  // Filter by selected category
+                  if (selectedCategory != 'All') {
+                    cars = cars.where((car) {
+                      final carCategory = car['category']?.toString() ?? '';
+                      return carCategory.toLowerCase() ==
+                          selectedCategory.toLowerCase();
+                    }).toList();
+                  }
 
                   if (cars.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'No cars available',
-                        style: TextStyle(color: Colors.white70, fontSize: 16),
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 80,
+                            color: Colors.white.withOpacity(0.3),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            selectedCategory == 'All'
+                                ? 'No cars available'
+                                : 'No $selectedCategory cars found',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }

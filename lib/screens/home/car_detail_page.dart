@@ -239,7 +239,7 @@ class _CarDetailPageState extends State<CarDetailPage> {
           SliverAppBar(
             expandedHeight: 300,
             pinned: true,
-            backgroundColor: const Color(0xFF2C2C2C),
+            backgroundColor: const Color(0xFF1A1A1A),
             leading: IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(8),
@@ -356,51 +356,66 @@ class _CarDetailPageState extends State<CarDetailPage> {
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
+              collapseMode: CollapseMode.pin,
               background: Stack(
                 fit: StackFit.expand,
                 children: [
                   // Image Carousel using PageView
-                  PageView.builder(
-                    itemCount: imageUrls.length,
-                    onPageChanged: (index) {
-                      setState(() {
-                        _currentImageIndex = index;
-                      });
+                  GestureDetector(
+                    onTap: () {
+                      // Open full-screen image viewer
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FullScreenImageViewer(
+                            imageUrls: imageUrls,
+                            initialIndex: _currentImageIndex,
+                          ),
+                        ),
+                      );
                     },
-                    itemBuilder: (context, index) {
-                      final imageUrl = imageUrls[index];
-                      return imageUrl.startsWith('http')
-                          ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey.withOpacity(0.3),
-                                  child: const Icon(
-                                    Icons.car_rental,
-                                    color: Colors.white54,
-                                    size: 80,
-                                  ),
-                                );
-                              },
-                            )
-                          : Image.asset(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey.withOpacity(0.3),
-                                  child: const Icon(
-                                    Icons.car_rental,
-                                    color: Colors.white54,
-                                    size: 80,
-                                  ),
-                                );
-                              },
-                            );
-                    },
+                    child: PageView.builder(
+                      itemCount: imageUrls.length,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentImageIndex = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final imageUrl = imageUrls[index];
+                        return imageUrl.startsWith('http')
+                            ? Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.grey.withOpacity(0.3),
+                                    child: const Icon(
+                                      Icons.car_rental,
+                                      color: Colors.white54,
+                                      size: 80,
+                                    ),
+                                  );
+                                },
+                              )
+                            : Image.asset(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.grey.withOpacity(0.3),
+                                    child: const Icon(
+                                      Icons.car_rental,
+                                      color: Colors.white54,
+                                      size: 80,
+                                    ),
+                                  );
+                                },
+                              );
+                      },
+                    ),
                   ),
                   // Image counter indicator (moved to top right)
                   if (imageUrls.length > 1)
@@ -1160,6 +1175,184 @@ class _CarDetailPageState extends State<CarDetailPage> {
             feature,
             style: const TextStyle(color: Colors.white, fontSize: 13),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// Full Screen Image Viewer Widget
+class FullScreenImageViewer extends StatefulWidget {
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  const FullScreenImageViewer({
+    super.key,
+    required this.imageUrls,
+    this.initialIndex = 0,
+  });
+
+  @override
+  State<FullScreenImageViewer> createState() => _FullScreenImageViewerState();
+}
+
+class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Full screen image viewer with PageView
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.imageUrls.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              final imageUrl = widget.imageUrls[index];
+              return Center(
+                child: InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 4.0,
+                  child: imageUrl.startsWith('http')
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.broken_image,
+                              color: Colors.white54,
+                              size: 100,
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          imageUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.broken_image,
+                              color: Colors.white54,
+                              size: 100,
+                            );
+                          },
+                        ),
+                ),
+              );
+            },
+          ),
+
+          // Top bar with close button and counter
+          SafeArea(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Close button
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+
+                  // Image counter
+                  if (widget.imageUrls.length > 1)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_currentIndex + 1} / ${widget.imageUrls.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+
+                  // Share button
+                  IconButton(
+                    onPressed: () {
+                      // TODO: Add share functionality
+                    },
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.share,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Bottom navigation dots
+          if (widget.imageUrls.length > 1)
+            Positioned(
+              bottom: 30,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: widget.imageUrls.asMap().entries.map((entry) {
+                  return Container(
+                    width: 8.0,
+                    height: 8.0,
+                    margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _currentIndex == entry.key
+                          ? const Color(0xFFFFB347)
+                          : Colors.white.withOpacity(0.5),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
         ],
       ),
     );

@@ -3,6 +3,7 @@ import 'package:autohub/screens/home/browse/recommended_cars.dart';
 import 'package:autohub/screens/home/browse/filtered_cars_page.dart';
 import 'package:autohub/screens/home/car_detail_page.dart';
 import 'package:autohub/screens/home/filter/advanced_filter_screen.dart';
+import 'package:autohub/screens/home/search_result_page.dart';
 import 'package:autohub/screens/notifications/notifications_center.dart';
 import 'package:autohub/helper/firestore_helper.dart';
 import 'package:flutter/material.dart';
@@ -92,13 +93,43 @@ class _StartPageState extends State<StartPage> {
                       size: 24,
                     ),
                     suffixIcon: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        final filterData = await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const AdvancedFilterScreen(),
                           ),
                         );
+
+                        // If filters were applied, navigate to search results
+                        if (filterData != null && mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SearchResultPage(
+                                searchQuery: '',
+                                category:
+                                    filterData['categories']?.isNotEmpty == true
+                                    ? filterData['categories'][0]
+                                    : null,
+                                priceRange: filterData['priceRange'],
+                                fuelType:
+                                    filterData['fuelTypes']?.isNotEmpty == true
+                                    ? filterData['fuelTypes'][0]
+                                    : null,
+                                transmission:
+                                    filterData['transmissions']?.isNotEmpty ==
+                                        true
+                                    ? filterData['transmissions'][0]
+                                    : null,
+                                minYear: filterData['yearRange']?.start.toInt(),
+                                maxYear: filterData['yearRange']?.end.toInt(),
+                                maxMileage: filterData['mileageRange']?.end
+                                    .toInt(),
+                              ),
+                            ),
+                          );
+                        }
                       },
                       child: Container(
                         margin: const EdgeInsets.all(8),
@@ -169,9 +200,20 @@ class _StartPageState extends State<StartPage> {
                       "New Listings",
                       isNewListingsSelected,
                       () {
-                        setState(() {
-                          isNewListingsSelected = !isNewListingsSelected;
-                        });
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SearchResultPage(
+                              searchQuery: '',
+                              category: null,
+                              priceRange: null,
+                              fuelType: null,
+                              transmission: null,
+                              minYear: DateTime.now().year,
+                              maxYear: DateTime.now().year,
+                            ),
+                          ),
+                        );
                       },
                     ),
                     const SizedBox(width: 12),
@@ -180,9 +222,19 @@ class _StartPageState extends State<StartPage> {
                       "Price Drop",
                       isPriceDropSelected,
                       () {
-                        setState(() {
-                          isPriceDropSelected = !isPriceDropSelected;
-                        });
+                        // Navigate to filtered cars with price drop filter
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SearchResultPage(
+                              searchQuery: '',
+                              category: null,
+                              priceRange: const RangeValues(0, 5000000),
+                              fuelType: null,
+                              transmission: null,
+                            ),
+                          ),
+                        );
                       },
                     ),
                     const SizedBox(width: 12),
@@ -191,9 +243,13 @@ class _StartPageState extends State<StartPage> {
                       "Top Rated",
                       isTopRatedSelected,
                       () {
-                        setState(() {
-                          isTopRatedSelected = !isTopRatedSelected;
-                        });
+                        // Navigate to recommended cars page
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RecommendedCars(),
+                          ),
+                        );
                       },
                     ),
                     const SizedBox(width: 12),
@@ -202,9 +258,18 @@ class _StartPageState extends State<StartPage> {
                       "Electric",
                       isElectricSelected,
                       () {
-                        setState(() {
-                          isElectricSelected = !isElectricSelected;
-                        });
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SearchResultPage(
+                              searchQuery: '',
+                              category: null,
+                              priceRange: null,
+                              fuelType: 'Electric',
+                              transmission: null,
+                            ),
+                          ),
+                        );
                       },
                     ),
                   ],
