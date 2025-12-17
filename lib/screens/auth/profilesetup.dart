@@ -227,7 +227,11 @@ class _ProfileSetupState extends State<ProfileSetup> {
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.black, Colors.black, Colors.transparent],
+                  colors: [
+                    Colors.black,
+                    Colors.black,
+                    Colors.black.withOpacity(0.8),
+                  ],
                   stops: const [0.0, 0.7, 1.0],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -294,9 +298,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
                                     backgroundImage: _selectedImage != null
                                         ? FileImage(_selectedImage!)
                                               as ImageProvider
-                                        : const AssetImage(
-                                            'assets/images/Profile.jpg',
-                                          ),
+                                        : null,
                                     child: _selectedImage == null
                                         ? const Icon(
                                             Icons.person,

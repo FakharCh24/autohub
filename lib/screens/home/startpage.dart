@@ -399,7 +399,6 @@ class _StartPageState extends State<StartPage> {
                         fontSize: 25,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        fontFamily: 'Archivo_Condensed',
                       ),
                     ),
                     const SizedBox(height: 10),

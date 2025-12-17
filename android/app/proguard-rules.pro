@@ -12,6 +12,20 @@
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
 
+# Keep Flutter assets and fonts (CRITICAL FOR ICONS)
+-keep class io.flutter.embedding.engine.FlutterJNI { *; }
+-keep class io.flutter.embedding.engine.loader.FlutterLoader { *; }
+-keepclassmembers class * {
+    @io.flutter.embedding.engine.dart.DartEntrypoint *;
+}
+
+# Don't strip or obfuscate font files and assets
+-keep class * extends android.content.res.AssetManager
+-keepclassmembers class * {
+    *** getAssets(...);
+}
+-dontwarn android.content.res.AssetManager
+
 # Keep image picker classes
 -keep class io.flutter.plugins.imagepicker.** { *; }
 
@@ -48,6 +62,18 @@
 -keepattributes *Annotation*
 -dontwarn sun.misc.**
 -keep class com.google.gson.** { *; }
+
+# Google Play Core - Don't warn about missing classes
+-dontwarn com.google.android.play.core.splitcompat.SplitCompatApplication
+-dontwarn com.google.android.play.core.splitinstall.**
+-dontwarn com.google.android.play.core.tasks.**
+
+# Keep Play Core classes if they exist (optional)
+-keep class com.google.android.play.core.** { *; }
+
+# Flutter Play Store integration
+-keep class io.flutter.embedding.android.FlutterPlayStoreSplitApplication { *; }
+-keep class io.flutter.embedding.engine.deferredcomponents.** { *; }
 -keep class * implements com.google.gson.TypeAdapterFactory
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
@@ -110,3 +136,25 @@
 # Keep line numbers for debugging stack traces
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# Keep all resource names to prevent obfuscation
+-keepclassmembers class **.R$* {
+    public static <fields>;
+}
+-keep class **.R$*
+
+# Keep resource IDs
+-keep class **.R
+-keep class **.R$* {
+    <fields>;
+}
+
+# Keep Flutter assets (images, fonts, etc.)
+-keep class io.flutter.embedding.engine.loader.FlutterLoader { *; }
+-keep class io.flutter.embedding.engine.FlutterEngine { *; }
+-keep class io.flutter.FlutterInjector { *; }
+
+# Prevent asset files from being removed
+-keepclassmembers class * {
+    *** lookupKeyForAsset(...);
+}

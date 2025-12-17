@@ -165,25 +165,27 @@ class FirestoreHelper {
       return Stream.value([]);
     }
 
-    return _carsCollection.where('userId', isEqualTo: userId).snapshots().map((
-      snapshot,
-    ) {
-      final cars = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+    return _carsCollection
+        .where('userId', isEqualTo: userId)
+        .where('isActive', isEqualTo: true)
+        .snapshots()
+        .map((snapshot) {
+          final cars = snapshot.docs.map((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            data['id'] = doc.id;
+            return data;
+          }).toList();
 
-      // Sort by createdAt client-side (no index needed)
-      cars.sort((a, b) {
-        final aTime = a['createdAt'] as Timestamp?;
-        final bTime = b['createdAt'] as Timestamp?;
-        if (aTime == null || bTime == null) return 0;
-        return bTime.compareTo(aTime); // Descending order (newest first)
-      });
+          // Sort by createdAt client-side (no index needed)
+          cars.sort((a, b) {
+            final aTime = a['createdAt'] as Timestamp?;
+            final bTime = b['createdAt'] as Timestamp?;
+            if (aTime == null || bTime == null) return 0;
+            return bTime.compareTo(aTime); // Descending order (newest first)
+          });
 
-      return cars;
-    });
+          return cars;
+        });
   }
 
   /// Get car listings by specific user ID

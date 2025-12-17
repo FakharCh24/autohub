@@ -97,7 +97,11 @@ class _CreateAccountPageState extends State<CreateAccountPage> {
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.black, Colors.black, Colors.transparent],
+                  colors: [
+                    Colors.black,
+                    Colors.black,
+                    Colors.black.withOpacity(0.8),
+                  ],
                   stops: const [0.0, 0.7, 1.0],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,

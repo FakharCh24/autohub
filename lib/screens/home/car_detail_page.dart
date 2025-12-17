@@ -383,37 +383,43 @@ class _CarDetailPageState extends State<CarDetailPage> {
                       },
                       itemBuilder: (context, index) {
                         final imageUrl = imageUrls[index];
-                        return imageUrl.startsWith('http')
-                            ? Image.network(
-                                imageUrl,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: Colors.grey.withOpacity(0.3),
-                                    child: const Icon(
-                                      Icons.car_rental,
-                                      color: Colors.white54,
-                                      size: 80,
-                                    ),
-                                  );
-                                },
-                              )
-                            : Image.asset(
-                                imageUrl,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: Colors.grey.withOpacity(0.3),
-                                    child: const Icon(
-                                      Icons.car_rental,
-                                      color: Colors.white54,
-                                      size: 80,
-                                    ),
-                                  );
-                                },
-                              );
+                        return ColorFiltered(
+                          colorFilter: ColorFilter.mode(
+                            Colors.black.withOpacity(0.6),
+                            BlendMode.darken,
+                          ),
+                          child: imageUrl.startsWith('http')
+                              ? Image.network(
+                                  imageUrl,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey.withOpacity(0.3),
+                                      child: const Icon(
+                                        Icons.car_rental,
+                                        color: Colors.white54,
+                                        size: 80,
+                                      ),
+                                    );
+                                  },
+                                )
+                              : Image.asset(
+                                  imageUrl,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey.withOpacity(0.3),
+                                      child: const Icon(
+                                        Icons.car_rental,
+                                        color: Colors.white54,
+                                        size: 80,
+                                      ),
+                                    );
+                                  },
+                                ),
+                        );
                       },
                     ),
                   ),
@@ -1234,29 +1240,35 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                 child: InteractiveViewer(
                   minScale: 0.5,
                   maxScale: 4.0,
-                  child: imageUrl.startsWith('http')
-                      ? Image.network(
-                          imageUrl,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.broken_image,
-                              color: Colors.white54,
-                              size: 100,
-                            );
-                          },
-                        )
-                      : Image.asset(
-                          imageUrl,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.broken_image,
-                              color: Colors.white54,
-                              size: 100,
-                            );
-                          },
-                        ),
+                  child: ColorFiltered(
+                    colorFilter: ColorFilter.mode(
+                      Colors.black.withOpacity(0.1),
+                      BlendMode.darken,
+                    ),
+                    child: imageUrl.startsWith('http')
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.broken_image,
+                                color: Colors.white54,
+                                size: 100,
+                              );
+                            },
+                          )
+                        : Image.asset(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.broken_image,
+                                color: Colors.white54,
+                                size: 100,
+                              );
+                            },
+                          ),
+                  ),
                 ),
               );
             },
@@ -1358,3 +1370,4 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
     );
   }
 }
+
